@@ -1,6 +1,6 @@
 # Cyclewise — Manual Finance
 
-[![CI / CD](https://github.com/paromitaslg98-source/dvide/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/paromitaslg98-source/dvide/actions/workflows/ci.yml)
+[![CI / CD](https://github.com/justachillgirl/dvide/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/justachillgirl/dvide/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Min SDK](https://img.shields.io/badge/minSdk-26-green)
 ![Target SDK](https://img.shields.io/badge/targetSdk-35-blue)
@@ -46,7 +46,7 @@ Three dashboard layouts surface this engine — pick the one that clicks.
 | Database | Room 2.6 (SQLite) |
 | Preferences | DataStore Preferences |
 | Navigation | Navigation Compose 2.8 |
-| Build | Gradle 8.10 · KSP · version catalog |
+| Build | Gradle 8.10.2 · KSP · version catalog |
 | CI/CD | GitHub Actions (5-stage pipeline) |
 | Min SDK | API 26 (Android 8.0) |
 | Target SDK | API 35 (Android 15) |
@@ -55,83 +55,94 @@ Three dashboard layouts surface this engine — pick the one that clicks.
 
 ## Project Structure
 
-```
-app/src/main/
-├── kotlin/com/dvide/app/
-│   ├── CyclewiseApp.kt              ← @HiltAndroidApp
-│   ├── MainActivity.kt             ← Edge-to-edge entry point
-│   │
-│   ├── data/
-│   │   ├── local/
-│   │   │   ├── CyclewiseDatabase.kt   ← Room database
-│   │   │   ├── TransactionDao.kt
-│   │   │   └── Converters.kt          ← LocalDate ↔ String
-│   │   ├── model/
-│   │   │   ├── Transaction.kt         ← Room entity
-│   │   │   └── Category.kt            ← Enum + OKLCH colour helpers
-│   │   └── repository/
-│   │       ├── TransactionRepository.kt
-│   │       └── SettingsRepository.kt  ← DataStore wrapper
-│   │
-│   ├── di/
-│   │   ├── AppModule.kt               ← DataStore singleton
-│   │   └── DatabaseModule.kt          ← Room singleton
-│   │
-│   ├── domain/
-│   │   ├── engine/
-│   │   │   ├── CycleEngine.kt         ← Pure computation (port of engine.jsx)
-│   │   │   └── TransactionGroup.kt
-│   │   └── model/
-│   │       ├── Cycle.kt
-│   │       ├── DashboardVariant.kt
-│   │       ├── Metrics.kt
-│   │       ├── PastCycle.kt
-│   │       └── SeedPreset.kt
-│   │
-│   ├── ui/
-│   │   ├── MainViewModel.kt           ← Hilt ViewModel; settings + txns → Metrics
-│   │   ├── components/                ← Shared composables
-│   │   │   ├── AllocationBar.kt
-│   │   │   ├── CategoryChip.kt
-│   │   │   ├── CycleProgressBar.kt
-│   │   │   ├── DashHeader.kt
-│   │   │   ├── HueSlider.kt
-│   │   │   ├── Icons.kt
-│   │   │   ├── Keypad.kt
-│   │   │   ├── RingGauge.kt
-│   │   │   └── TransactionTimeline.kt
-│   │   ├── dashboard/
-│   │   │   ├── DashboardScreen.kt
-│   │   │   └── variants/
-│   │   │       ├── EditorialDashboard.kt
-│   │   │       ├── GaugeDashboard.kt
-│   │   │       └── CardsDashboard.kt
-│   │   ├── entry/
-│   │   │   └── AddTransactionSheet.kt
-│   │   ├── settings/
-│   │   │   └── SettingsScreen.kt
-│   │   ├── cycle/
-│   │   │   └── CycleDetailScreen.kt
-│   │   ├── navigation/
-│   │   │   └── CyclewiseNavHost.kt
-│   │   └── theme/
-│   │       ├── Color.kt               ← 4 OKLCH seed palettes
-│   │       ├── Type.kt                ← M3E type scale
-│   │       ├── Shape.kt               ← Asymmetric expressive shapes
-│   │       └── Theme.kt               ← CyclewiseTheme composable
-│   │
-│   └── util/
-│       └── FormatMoney.kt
-│
-├── res/
-│   ├── font/                          ← Drop RobotoFlex-VariableFont.ttf here
-│   ├── values/strings.xml
-│   └── mipmap-anydpi-v26/ic_launcher.xml
-│
-└── schemas/                           ← Room migration schemas (tracked by git)
+> **Note on packaging:** the Kotlin package is `com.dvide.app`, but the source
+> directories remain `com/dvide/cyclewise/` — Kotlin does not require the folder
+> path to mirror the package declaration, so the historical folder name was kept.
 
-app/src/test/                          ← JUnit unit tests
-app/src/androidTest/                   ← Instrumented tests
+```
+app/
+├── build.gradle.kts                ← module config, signing, version formula
+├── proguard-rules.pro
+├── schemas/                        ← Room exported schemas (tracked by git)
+└── src/
+    ├── main/
+    │   ├── AndroidManifest.xml
+    │   ├── kotlin/com/dvide/cyclewise/        (package = com.dvide.app)
+    │   │   ├── CyclewiseApp.kt          ← @HiltAndroidApp
+    │   │   ├── MainActivity.kt          ← Edge-to-edge entry point
+    │   │   │
+    │   │   ├── data/
+    │   │   │   ├── local/
+    │   │   │   │   ├── CyclewiseDatabase.kt   ← Room database
+    │   │   │   │   ├── TransactionDao.kt
+    │   │   │   │   └── Converters.kt          ← LocalDate ↔ String
+    │   │   │   ├── model/
+    │   │   │   │   ├── Transaction.kt         ← Room entity
+    │   │   │   │   └── Category.kt            ← Enum + OKLCH colour helpers
+    │   │   │   └── repository/
+    │   │   │       ├── TransactionRepository.kt
+    │   │   │       └── SettingsRepository.kt  ← DataStore wrapper
+    │   │   │
+    │   │   ├── di/
+    │   │   │   ├── AppModule.kt               ← DataStore singleton
+    │   │   │   └── DatabaseModule.kt          ← Room singleton
+    │   │   │
+    │   │   ├── domain/
+    │   │   │   ├── engine/
+    │   │   │   │   ├── CycleEngine.kt         ← Pure computation (port of engine.jsx)
+    │   │   │   │   └── TransactionGroup.kt
+    │   │   │   └── model/
+    │   │   │       ├── Cycle.kt
+    │   │   │       ├── DashboardVariant.kt
+    │   │   │       ├── Metrics.kt
+    │   │   │       ├── PastCycle.kt
+    │   │   │       └── SeedPreset.kt
+    │   │   │
+    │   │   ├── ui/
+    │   │   │   ├── MainViewModel.kt           ← Hilt ViewModel; settings + txns → Metrics
+    │   │   │   ├── components/                ← Shared composables
+    │   │   │   │   ├── AllocationBar.kt
+    │   │   │   │   ├── CategoryChip.kt
+    │   │   │   │   ├── CycleProgressBar.kt
+    │   │   │   │   ├── DashHeader.kt
+    │   │   │   │   ├── HueSlider.kt
+    │   │   │   │   ├── Icons.kt
+    │   │   │   │   ├── Keypad.kt
+    │   │   │   │   ├── RingGauge.kt
+    │   │   │   │   └── TransactionTimeline.kt
+    │   │   │   ├── dashboard/
+    │   │   │   │   ├── DashboardScreen.kt
+    │   │   │   │   └── variants/
+    │   │   │   │       ├── EditorialDashboard.kt
+    │   │   │   │       ├── GaugeDashboard.kt
+    │   │   │   │       └── CardsDashboard.kt
+    │   │   │   ├── entry/
+    │   │   │   │   └── AddTransactionSheet.kt
+    │   │   │   ├── settings/
+    │   │   │   │   └── SettingsScreen.kt
+    │   │   │   ├── cycle/
+    │   │   │   │   └── CycleDetailScreen.kt
+    │   │   │   ├── navigation/
+    │   │   │   │   └── CyclewiseNavHost.kt
+    │   │   │   └── theme/
+    │   │   │       ├── Color.kt               ← 4 OKLCH seed palettes
+    │   │   │       ├── Type.kt                ← M3E type scale
+    │   │   │       ├── Shape.kt               ← Asymmetric expressive shapes
+    │   │   │       └── Theme.kt               ← CyclewiseTheme composable
+    │   │   │
+    │   │   └── util/
+    │   │       └── FormatMoney.kt
+    │   │
+    │   └── res/
+    │       ├── drawable/              ← ic_launcher_background / _foreground
+    │       ├── font/                  ← Drop RobotoFlex-VariableFont.ttf here
+    │       ├── mipmap-anydpi-v26/     ← ic_launcher / ic_launcher_round
+    │       └── values/                ← strings.xml · themes.xml
+    │
+    ├── test/kotlin/com/dvide/cyclewise/
+    │   └── CycleEngineTest.kt         ← JUnit unit tests
+    └── androidTest/kotlin/com/dvide/cyclewise/
+        └── ExampleInstrumentedTest.kt ← Instrumented test
 ```
 
 ---
@@ -225,7 +236,8 @@ gradle wrapper --gradle-version 8.10.2
 
 ```bash
 ./gradlew :app:assembleDebug
-adb install app/build/outputs/apk/debug/cyclewise-debug.apk
+# Local builds produce app-debug.apk; the CI pipeline renames it to cyclewise-debug.apk
+adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ### Run unit tests
@@ -284,10 +296,14 @@ push / PR to master
    git tag v1.0.0
    git push origin v1.0.0
    ```
+   > The tag must match `v[0-9]+.[0-9]+.[0-9]+` exactly — only this pattern
+   > triggers the release job.
 2. The **Release** job automatically:
-   - Derives `versionCode` from the tag (`1.0.0` → `10000`)
+   - Extracts the version from the tag and computes a workflow-side
+     `versionCode` as `major×10000 + minor×100 + patch` (`1.0.0` → `10000`),
+     passing both as project properties *(see the versioning caveat above)*
    - Decodes the keystore from `RELEASE_KEYSTORE_B64`
-   - Builds and signs the APK and AAB
+   - Builds and signs the AAB (`bundleRelease`) and APK (`assembleRelease`)
    - Verifies the APK signature with `apksigner`
    - Generates a changelog from `git log` since the previous tag
    - Creates a GitHub Release with the APK + AAB attached
@@ -310,11 +326,20 @@ Set these in **Settings → Secrets and variables → Actions**:
 
 | Field | Value |
 |---|---|
-| Application ID | `com.dvide.app` |
+| Application ID | `com.dvide.app` (debug builds use `com.dvide.app.debug`) |
 | Min SDK | 26 (Android 8.0 Oreo) |
 | Target SDK | 35 (Android 15) |
 | Compile SDK | 35 |
+| Version name | `0.0.0.2` (four-part `major.minor.patch.build`) |
+| Version code | `major×1_000_000 + minor×10_000 + patch×100 + build` |
 | Build tools | AGP 8.7.3 / Kotlin 2.1.0 / KSP 2.1.0-1.0.29 |
+
+> **Versioning:** `versionName` / `versionCode` are currently derived from
+> hardcoded `major`/`minor`/`patch`/`build` constants in
+> [`app/build.gradle.kts`](app/build.gradle.kts). The release job *extracts* a
+> version from the git tag and passes `-PversionName` / `-PversionCode`, but the
+> build script does not yet read those project properties — wire them in if you
+> want tag-driven versioning to take effect.
 
 ---
 
