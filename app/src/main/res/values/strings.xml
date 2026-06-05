@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cyclewise</string>
+    <string name="app_tagline">Manual Finance</string>
+
+    <!-- Dashboard -->
+    <string name="safe_to_spend">SAFE TO SPEND</string>
+    <string name="per_day">PER DAY</string>
+    <string name="spendable">SPENDABLE</string>
+    <string name="balance">BALANCE</string>
+    <string name="over_by">OVER BY</string>
+    <string name="set_aside">SET ASIDE</string>
+    <string name="spent_label">SPENT</string>
+    <string name="income_label">INCOME</string>
+    <string name="days_left">DAYS LEFT</string>
+    <string name="cycle_closed_surplus">CLOSED WITH SURPLUS</string>
+    <string name="cycle_closed_borrowed">CLOSED · BORROWED</string>
+    <string name="daily">Daily</string>
+    <string name="weekly">Weekly</string>
+
+    <!-- Categories -->
+    <string name="category_savings">Savings</string>
+    <string name="category_investment">Investment</string>
+    <string name="category_security">Security</string>
+    <string name="category_essentials">Essentials</string>
+    <string name="category_lifestyle">Lifestyle</string>
+
+    <!-- Entry sheet -->
+    <string name="new_entry">New entry</string>
+    <string name="spend">Spend</string>
+    <string name="set_aside_action">Set aside</string>
+    <string name="add_a_note">Add a note</string>
+    <string name="or_type_category">or type a category…</string>
+    <string name="add_transaction">Add transaction</string>
+
+    <!-- Settings -->
+    <string name="settings">Settings</string>
+    <string name="display">Display</string>
+    <string name="dashboard_style">Dashboard style</string>
+    <string name="dark_theme">Dark theme</string>
+    <string name="app_colour">App colour</string>
+    <string name="region_currency">Region &amp; currency</string>
+    <string name="currency">Currency</string>
+    <string name="region">Region</string>
+    <string name="week_starts_on">Week starts on</string>
+    <string name="number_format">Number format</string>
+    <string name="account">Account</string>
+    <string name="personal_details">Personal details</string>
+    <string name="manual_only_mode">Manual-only mode</string>
+    <string name="export_ledger">Export ledger</string>
+
+    <!-- Cycle detail -->
+    <string name="this_cycle">This cycle</string>
+    <string name="cycle_closed">Cycle closed</string>
+    <string name="configuration">Configuration</string>
+    <string name="cycle_anchor">Cycle anchor</string>
+    <string name="monthly_income">Monthly income</string>
+    <string name="cycle_window">Cycle window</string>
+    <string name="the_waterfall">The waterfall</string>
+    <string name="outlook">Outlook</string>
+    <string name="projected_close">Projected close</string>
+    <string name="safe_to_spend_label">Safe to spend</string>
+    <string name="past_cycles">Past cycles</string>
+    <string name="surplus">surplus</string>
+    <string name="borrowed">borrowed</string>
+    <string name="left_to_spend">left to spend</string>
+
+    <!-- Misc -->
+    <string name="cd_toggle_theme">Toggle theme</string>
+    <string name="cd_open_settings">Open settings</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_view_cycle">View cycle detail</string>
+    <string name="version_info">Cyclewise · v1.0 · made by hand</string>
+</resources>

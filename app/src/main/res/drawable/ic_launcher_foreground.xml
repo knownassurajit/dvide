@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Ring arc representing the gauge -->
+    <path
+        android:pathData="M54,18 A36,36 0 1,1 53.99,18"
+        android:strokeColor="#D4AAFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent" />
+    <!-- "C" letter mark -->
+    <path
+        android:pathData="M63,40 A16,16 0 1,0 63,68"
+        android:strokeColor="#D4AAFF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent" />
+</vector>

@@ -1,0 +1,72 @@
+### ──────────────────────────────────────────────────────────────────
+### Gradle
+### ──────────────────────────────────────────────────────────────────
+.gradle/
+build/
+
+# Wrapper JAR must be committed; exclude everything else in the wrapper dir
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+### ──────────────────────────────────────────────────────────────────
+### Android / AAPT
+### ──────────────────────────────────────────────────────────────────
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Local signing config — never commit real keystores
+local.properties
+*.jks
+*.keystore
+release.jks
+
+# ProGuard mapping (keep per-release artefacts out of the repo)
+*.mapping
+
+### ──────────────────────────────────────────────────────────────────
+### Room — schema files ARE committed (needed for migration auditing)
+### ──────────────────────────────────────────────────────────────────
+# app/schemas/ is intentionally tracked — do NOT add it here
+
+### ──────────────────────────────────────────────────────────────────
+### Android Studio / IntelliJ IDEA
+### ──────────────────────────────────────────────────────────────────
+*.iml
+.idea/
+!.idea/codeStyles/
+!.idea/inspectionProfiles/
+*.hprof
+captures/
+.navigation/
+out/
+
+### ──────────────────────────────────────────────────────────────────
+### Kotlin / JVM
+### ──────────────────────────────────────────────────────────────────
+*.class
+
+### ──────────────────────────────────────────────────────────────────
+### CI artefacts (keep locally cached runs from polluting git status)
+### ──────────────────────────────────────────────────────────────────
+.cxx/
+lint-results*.html
+lint-results*.xml
+test-results/
+
+### ──────────────────────────────────────────────────────────────────
+### OS
+### ──────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+### ──────────────────────────────────────────────────────────────────
+### Env / secrets
+### ──────────────────────────────────────────────────────────────────
+.env
+.env.local
+secrets.properties

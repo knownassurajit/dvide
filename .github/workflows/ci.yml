@@ -1,0 +1,379 @@
+name: CI / CD
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Triggers
+# ──────────────────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [ master ]
+    tags:     [ 'v[0-9]+.[0-9]+.[0-9]+' ]
+  pull_request:
+    branches: [ master ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Global environment
+# ──────────────────────────────────────────────────────────────────────────────
+env:
+  JAVA_VERSION:    '17'
+  JAVA_DISTRO:     temurin
+  GRADLE_VERSION:  '8.10.2'
+  # Keep APK/AAB names consistent across jobs
+  APK_DEBUG:       cyclewise-debug.apk
+  APK_RELEASE:     cyclewise-release.apk
+  AAB_RELEASE:     cyclewise-release.aab
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Jobs
+# ──────────────────────────────────────────────────────────────────────────────
+jobs:
+
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │  1 · COMPILE                                                            │
+  # │  Fast syntactic check — catches missing imports before tests run.       │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  compile:
+    name: ① Compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRO }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Validate Gradle wrapper integrity
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Set up Gradle (cache + build-scan)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Compile debug sources (no tests)
+        run: ./gradlew :app:compileDebugKotlin :app:compileDebugJavaWithJavac --stacktrace
+
+      - name: Upload compilation reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compile-reports
+          path: app/build/reports/
+          retention-days: 3
+
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │  2 · UNIT TESTS                                                         │
+  # │  Runs in parallel with Lint after compile succeeds.                     │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  unit-tests:
+    name: ② Unit Tests
+    runs-on: ubuntu-latest
+    needs: compile
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRO }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+          cache-read-only: true
+
+      - name: Run debug unit tests
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
+      - name: Upload JUnit XML results
+        # Always upload so failures are visible in the "Tests" tab
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: app/build/test-results/testDebugUnitTest/
+          retention-days: 14
+
+      - name: Upload HTML test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: app/build/reports/tests/testDebugUnitTest/
+          retention-days: 14
+
+      - name: Annotate PR with test failures
+        if: failure() && github.event_name == 'pull_request'
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: app/build/test-results/testDebugUnitTest/*.xml
+          check_name: Unit Test Results
+
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │  3 · LINT                                                               │
+  # │  Android + Kotlin static analysis, runs parallel to unit-tests.        │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  lint:
+    name: ③ Lint
+    runs-on: ubuntu-latest
+    needs: compile
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRO }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+          cache-read-only: true
+
+      - name: Run Android lint (debug variant)
+        run: ./gradlew :app:lintDebug --stacktrace
+
+      - name: Upload lint HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.html
+          retention-days: 14
+
+      - name: Upload lint XML results (for PR annotations)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-results-xml
+          path: app/build/reports/lint-results-debug.xml
+          retention-days: 7
+
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │  4 · DEBUG APK                                                          │
+  # │  Builds a debug APK on every push to master.                           │
+  # │  Not triggered on PRs (avoid wasted minutes before merge).             │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  build-debug:
+    name: ④ Debug APK
+    runs-on: ubuntu-latest
+    needs: [ unit-tests, lint ]
+    # Run on master pushes only; tags are handled by the release job
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/master' &&
+      !startsWith(github.ref, 'refs/tags/')
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRO }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Rename APK to consistent filename
+        run: |
+          mv app/build/outputs/apk/debug/*.apk \
+             app/build/outputs/apk/debug/${{ env.APK_DEBUG }}
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_DEBUG }}
+          path: app/build/outputs/apk/debug/${{ env.APK_DEBUG }}
+          retention-days: 7
+
+      - name: Post APK summary
+        run: |
+          APK_SIZE=$(du -sh app/build/outputs/apk/debug/${{ env.APK_DEBUG }} | cut -f1)
+          echo "### Debug APK" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| File | \`${{ env.APK_DEBUG }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Size | ${APK_SIZE} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit | \`${{ github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │  5 · RELEASE                                                            │
+  # │  Triggered only by version tags (v1.2.3).                              │
+  # │  Builds a signed release APK + AAB and publishes to GitHub Releases.   │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  release:
+    name: ⑤ Release
+    runs-on: ubuntu-latest
+    needs: [ unit-tests, lint ]
+    if: startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 45
+    permissions:
+      contents: write   # required to create a GitHub Release
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for changelog generation
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRO }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+
+      # ── Extract tag version (strips leading "v") ─────────────────────────
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"          # e.g. v1.2.3
+          VERSION="${TAG#v}"                       # e.g. 1.2.3
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+          echo "tag=$TAG"              >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION"      >> "$GITHUB_OUTPUT"
+          echo "versionCode=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "**Tag:** $TAG  |  **Version name:** $VERSION  |  **Version code:** $VERSION_CODE" >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Decode keystore from base-64 secret ──────────────────────────────
+      - name: Decode release keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          echo "Keystore decoded to $RUNNER_TEMP/release.jks"
+
+      # ── Build release AAB ─────────────────────────────────────────────────
+      - name: Build release AAB
+        env:
+          STORE_FILE:     ${{ runner.temp }}/release.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS:      ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:   ${{ secrets.KEY_PASSWORD }}
+        run: |
+          ./gradlew :app:bundleRelease \
+            -Pandroid.injected.signing.store.file="$STORE_FILE" \
+            -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD" \
+            -PversionName="${{ steps.version.outputs.version }}" \
+            -PversionCode="${{ steps.version.outputs.versionCode }}" \
+            --stacktrace
+
+      # ── Build release APK ────────────────────────────────────────────────
+      - name: Build release APK
+        env:
+          STORE_FILE:     ${{ runner.temp }}/release.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS:      ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:   ${{ secrets.KEY_PASSWORD }}
+        run: |
+          ./gradlew :app:assembleRelease \
+            -Pandroid.injected.signing.store.file="$STORE_FILE" \
+            -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD" \
+            -PversionName="${{ steps.version.outputs.version }}" \
+            -PversionCode="${{ steps.version.outputs.versionCode }}" \
+            --stacktrace
+
+      # ── Rename artefacts to consistent filenames ─────────────────────────
+      - name: Rename release artefacts
+        run: |
+          mv app/build/outputs/apk/release/*.apk \
+             app/build/outputs/apk/release/${{ env.APK_RELEASE }}
+          mv app/build/outputs/bundle/release/*.aab \
+             app/build/outputs/bundle/release/${{ env.AAB_RELEASE }}
+
+      # ── Verify signatures ────────────────────────────────────────────────
+      - name: Verify APK signature
+        run: |
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/apksigner \
+            verify --verbose \
+            app/build/outputs/apk/release/${{ env.APK_RELEASE }}
+
+      # ── Generate changelog from git log since last tag ───────────────────
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+          CHANGES=$(git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges | head -40)
+          # Write to file for multi-line output
+          {
+            echo "## What's changed"
+            echo ""
+            echo "$CHANGES"
+            echo ""
+            echo "**Full diff:** [$PREV_TAG → ${{ steps.version.outputs.tag }}](https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ steps.version.outputs.tag }})"
+          } > /tmp/changelog.md
+          cat /tmp/changelog.md
+
+      # ── Print artefact sizes ─────────────────────────────────────────────
+      - name: Post release summary
+        run: |
+          APK_SIZE=$(du -sh app/build/outputs/apk/release/${{ env.APK_RELEASE }} | cut -f1)
+          AAB_SIZE=$(du -sh app/build/outputs/bundle/release/${{ env.AAB_RELEASE }} | cut -f1)
+          echo "### Release ${{ steps.version.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Artefact | Size |"  >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|"            >> "$GITHUB_STEP_SUMMARY"
+          echo "| APK | ${APK_SIZE} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| AAB | ${AAB_SIZE} |" >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Create GitHub Release and attach artefacts ───────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name:   ${{ steps.version.outputs.tag }}
+          name:       "Cyclewise ${{ steps.version.outputs.version }}"
+          body_path:  /tmp/changelog.md
+          draft:      false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          files: |
+            app/build/outputs/apk/release/${{ env.APK_RELEASE }}
+            app/build/outputs/bundle/release/${{ env.AAB_RELEASE }}
+          fail_on_unmatched_files: true
+
+      # ── Shred keystore from runner ────────────────────────────────────────
+      - name: Remove keystore
+        if: always()
+        run: shred -u "$RUNNER_TEMP/release.jks" 2>/dev/null || rm -f "$RUNNER_TEMP/release.jks"
