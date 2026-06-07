@@ -1,4 +1,4 @@
-﻿package com.dvide.app.ui.cycle
+package com.dvide.app.ui.cycle
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -96,12 +96,13 @@ fun CycleDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             letterSpacing = androidx.compose.ui.unit.TextUnit(0.16f, androidx.compose.ui.unit.TextUnitType.Em),
                         )
-                        Row(verticalAlignment = Alignment.Baseline) {
+                        Row(verticalAlignment = Alignment.Bottom) {
                             Text(
                                 text  = "${if (ended && surplus) "+" else if (ended) "−" else ""}${kotlin.math.abs(metrics.balance).formatMoney()}",
                                 style = MaterialTheme.typography.displaySmall.copy(
                                     color = if (ended && !surplus) cc.status else MaterialTheme.colorScheme.onSurface,
                                 ),
+                                modifier = Modifier.alignByBaseline(),
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
@@ -114,7 +115,7 @@ fun CycleDetailScreen(
                                     fontWeight = FontWeight.Normal,
                                     color      = MaterialTheme.colorScheme.onSurfaceVariant,
                                 ),
-                                modifier = Modifier.padding(bottom = 4.dp),
+                                modifier = Modifier.alignByBaseline(),
                             )
                         }
                         Text(

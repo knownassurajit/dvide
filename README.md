@@ -225,12 +225,16 @@ ShapeGaugeCardSharp = RoundedCornerShape(16)
 
 ### First-time setup
 
-The Gradle wrapper JAR (`gradle/wrapper/gradle-wrapper.jar`) must be present. Open the project in Android Studio — it auto-generates the wrapper — or run:
-
-```bash
-# Requires a local Gradle 8.10 installation
-gradle wrapper --gradle-version 8.10.2
-```
+1. **Gradle Wrapper JAR:** The wrapper JAR (`gradle/wrapper/gradle-wrapper.jar`) must be present. If it is missing, download or generate it (e.g., from Gradle's repository).
+2. **Permissions:** Mark the wrapper as executable:
+   ```bash
+   chmod +x gradlew
+   ```
+3. **Android SDK Location:** Create a `local.properties` file in the project root pointing to your Android SDK:
+   ```properties
+   sdk.dir=/path/to/your/sdk
+   # On macOS: /Users/<username>/Library/Android/sdk
+   ```
 
 ### Build & install debug
 
