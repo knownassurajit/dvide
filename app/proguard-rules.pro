@@ -1,4 +1,4 @@
-# Cyclewise — ProGuard rules
+# Dvide — ProGuard rules
 
 # Keep Room entities and DAOs
 -keep class com.dvide.app.data.** { *; }

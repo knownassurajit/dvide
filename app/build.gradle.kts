@@ -19,7 +19,7 @@ android {
         val major = 0
         val minor = 0
         val patch = 0
-        val build = 2
+        val build = 1
 
         versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build
         versionName = "$major.$minor.$patch.$build"
@@ -73,6 +73,12 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -113,6 +119,9 @@ dependencies {
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation("org.robolectric:robolectric:4.12.2")
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

@@ -1,0 +1,103 @@
+package com.dvide.app.data.repository
+
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.*
+import com.dvide.app.domain.model.DashboardVariant
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import java.io.IOException
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class SettingsRepository @Inject constructor(
+    private val dataStore: DataStore<Preferences>,
+) {
+    companion object {
+        val KEY_INCOME           = doublePreferencesKey("income")
+        val KEY_ANCHOR_DAY       = intPreferencesKey("anchor_day")
+        val KEY_SEED_HUE         = intPreferencesKey("seed_hue")
+        val KEY_DARK_THEME       = booleanPreferencesKey("dark_theme")
+        val KEY_DASHBOARD_VARIANT= stringPreferencesKey("dashboard_variant")
+        val KEY_USER_NAME        = stringPreferencesKey("user_name")
+        val KEY_USER_EMAIL       = stringPreferencesKey("user_email")
+        val KEY_SEEDED           = booleanPreferencesKey("seeded")
+        val KEY_CURRENCY_CODE    = stringPreferencesKey("currency_code")
+        val KEY_REGION_CODE      = stringPreferencesKey("region_code")
+        val KEY_WEEK_START_DAY   = intPreferencesKey("week_start_day")
+        val KEY_NUMBER_FORMAT    = stringPreferencesKey("number_format")
+
+        private fun defaultCurrencyCode(): String {
+            return try {
+                java.util.Currency.getInstance(java.util.Locale.getDefault()).currencyCode
+            } catch (e: Exception) {
+                "GBP"
+            }
+        }
+
+        private fun defaultRegionCode(): String {
+            val country = java.util.Locale.getDefault().country
+            return if (country.isNullOrEmpty()) "GB" else country
+        }
+    }
+
+    val settingsFlow: Flow<AppSettings> = dataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { prefs ->
+            AppSettings(
+                income           = prefs[KEY_INCOME]            ?: 0.0,
+                anchorDay        = prefs[KEY_ANCHOR_DAY]        ?: 1,
+                seedHue          = prefs[KEY_SEED_HUE]          ?: 300,
+                darkTheme        = prefs[KEY_DARK_THEME]        ?: true,
+                dashboardVariant = DashboardVariant.fromKey(prefs[KEY_DASHBOARD_VARIANT] ?: "editorial"),
+                userName         = prefs[KEY_USER_NAME]         ?: "",
+                userEmail        = prefs[KEY_USER_EMAIL]        ?: "",
+                seeded           = prefs[KEY_SEEDED]            ?: false,
+                currencyCode     = prefs[KEY_CURRENCY_CODE]     ?: defaultCurrencyCode(),
+                regionCode       = prefs[KEY_REGION_CODE]       ?: defaultRegionCode(),
+                weekStartDay     = prefs[KEY_WEEK_START_DAY]     ?: 2, // Monday
+                numberFormat     = prefs[KEY_NUMBER_FORMAT]     ?: "DEFAULT",
+            )
+        }
+
+    suspend fun setIncome(income: Double) = dataStore.edit { it[KEY_INCOME] = income }
+
+    suspend fun setAnchorDay(day: Int) = dataStore.edit { it[KEY_ANCHOR_DAY] = day }
+
+    suspend fun setSeedHue(hue: Int) = dataStore.edit { it[KEY_SEED_HUE] = hue }
+
+    suspend fun setDarkTheme(dark: Boolean) = dataStore.edit { it[KEY_DARK_THEME] = dark }
+
+    suspend fun setDashboardVariant(variant: DashboardVariant) =
+        dataStore.edit { it[KEY_DASHBOARD_VARIANT] = variant.key }
+
+    suspend fun setUserName(name: String) = dataStore.edit { it[KEY_USER_NAME] = name }
+
+    suspend fun setUserEmail(email: String) = dataStore.edit { it[KEY_USER_EMAIL] = email }
+
+    suspend fun markSeeded() = dataStore.edit { it[KEY_SEEDED] = true }
+
+    suspend fun setCurrencyCode(code: String) = dataStore.edit { it[KEY_CURRENCY_CODE] = code }
+
+    suspend fun setRegionCode(code: String) = dataStore.edit { it[KEY_REGION_CODE] = code }
+
+    suspend fun setWeekStartDay(day: Int) = dataStore.edit { it[KEY_WEEK_START_DAY] = day }
+
+    suspend fun setNumberFormat(format: String) = dataStore.edit { it[KEY_NUMBER_FORMAT] = format }
+}
+
+data class AppSettings(
+    val income: Double           = 0.0,
+    val anchorDay: Int           = 1,
+    val seedHue: Int             = 300,
+    val darkTheme: Boolean       = true,
+    val dashboardVariant: DashboardVariant = DashboardVariant.EDITORIAL,
+    val userName: String         = "",
+    val userEmail: String        = "",
+    val seeded: Boolean          = false,
+    val currencyCode: String     = "GBP",
+    val regionCode: String       = "GB",
+    val weekStartDay: Int        = 2, // Monday
+    val numberFormat: String     = "DEFAULT",
+)

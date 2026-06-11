@@ -1,71 +1,101 @@
-# Cyclewise Knowledge Base (LEARN.md)
+# dv/de — Architecture & Development Knowledge Base
 
-Welcome to the Cyclewise project. This document serves as the living documentation and design guide for the application. Any agent or developer working on the project must read and maintain this file.
-
----
-
-## 1. Project Overview & Business Logic
-
-Cyclewise is a salary-cycle personal finance tracker for Android. Unlike typical calendar-month trackers, Cyclewise models spendable money around a **repeating monthly window anchored to a payday**.
-
-### The Budget Waterfall
-All incoming salary flows through a single calculation engine (`CycleEngine`):
-```
-Income
-  − Set aside  (Savings · Investment · Security)
-  = Spendable
-  − Spent      (Essentials · Lifestyle)
-  = Balance   →  safe-to-spend per day remaining
-```
-
-Three dashboard layouts render this flow: Editorial (Big-number daily allowance), Gauge (Ring runway), and Cards (stacked hero + bucket stats).
+This document serves as an onboarding guide and architectural blueprint for **dv/de** (formerly Cyclewise). Read this before modifying the codebase or running build pipelines.
 
 ---
 
-## 2. Technical Stack & Architecture
-
-### Dependency Layers
-The application uses a unidirectional data flow (UDF) MVVM pattern:
-
-```
-[Room Database / DataStore] ──> [Repositories] ──> [ViewModel] ──> [Compose UI]
-```
-
-- **Core Framework:** Kotlin 2.1 / Jetpack Compose with Material Design 3 Expressive.
-- **Dependency Injection:** Hilt 2.52 (`@HiltAndroidApp`, `@AndroidEntryPoint`, `@HiltViewModel`).
-- **Database:** Room 2.6 (SQLite) for storing transaction models.
-- **Preferences:** Jetpack DataStore Preferences for app state (selected theme seed, payday anchor, target numbers).
-- **Navigation:** Navigation Compose 2.8.
-- **Calculations:** Pure Kotlin ports of budget maths (`CycleEngine.kt`) combining settings data and room transactions into `Metrics`.
-
-### Packaging Structure
-> [!IMPORTANT]
-> The Android application ID is `com.dvide.app` (or `com.dvide.app.debug` for local debug builds). However, the source code resides under package folders `com/dvide/cyclewise/` for historical continuity. Do not align directory structure to package declarations; follow the established path.
+## 1. Core Concept & Branding
+- **Name:** The application name is creatively styled as `"dv/de"` in user-facing components (headers, settings footer, etc.), but references to the app in class names and folder structures use `dvide`.
+- **Application ID:** `com.dvide.app` (debug suffix `.debug`).
+- **Directory Package:** `app/src/main/kotlin/com/dvide/dvide/` contains all Kotlin source files.
+- **Workflow / Design:** Models salary-based budget waterfall matching a repeating cycle anchored to a pay day (Anchor Day).
 
 ---
 
-## 3. Design System & Styling Rules
+## 2. Architecture & Data Flow
 
-### Color Seed System
-The app uses four HSL/OKLCH color themes selectable via a slider in Settings:
-- **Violet:** Accent primary dark `#D4AAFF` / light `#6B3FA8`
-- **Indigo:** Accent primary dark `#B8B4FF` / light `#5A48B8`
-- **Forest:** Accent primary dark `#72DEBF` / light `#00715F`
-- **Clay:** Accent primary dark `#FFB77A` / light `#8A4A00`
+```
+   ┌────────────────────────────────────────────────┐
+   │               MainActivity                     │
+   │       edge-to-edge · Hilt · DvideTheme         │
+   └─────────────────────┬──────────────────────────┘
+                         │
+           ┌─────────────▼─────────────┐
+           │        DvideNavHost       │
+           │    NavHost & BottomSheet  │
+           └─────────────┬─────────────┘
+                         │ state flows
+           ┌─────────────▼─────────────┐
+           │        MainViewModel      │  ← @HiltViewModel
+           │  settings + transactions  │
+           │  → CycleEngine → Metrics  │
+           └─────┬──────────┬──────────┘
+                 │          │
+     ┌───────────▼──┐ ┌─────▼──────────────┐
+     │  Settings    │ │  Transaction       │
+     │  Repository  │ │  Repository        │
+     │  DataStore   │ │  Room DB / DAO     │
+     └──────────────┘ └────────────────────┘
+```
 
-State indicators (e.g. over-spent terracotta) are fixed to maintain warning clarity.
-
-### Organic Shapes
-Asymmetrical expressiveness is built using Custom RoundedCornerShapes:
-- `ShapeGaugeCard`: `RoundedCornerShape(topStart=40, topEnd=40, bottomEnd=40, bottomStart=16)`
-- `ShapeGaugeCardSharp` (used when budget stress morphs): `RoundedCornerShape(16)`
+- **UDF Pattern:** UI elements only state-observe and dispatch actions to the `MainViewModel`.
+- **DvideDatabase:** A local Room database (`dvide.db`) storing a single `Transaction` table.
+- **SettingsRepository:** Encapsulates Jetpack DataStore Preferences for user income, anchor day, selected app color theme (seed hue), dark mode, dashboard variant, and user profile information (`userName`, `userEmail`).
 
 ---
 
-## 4. Maintenance Guidelines
+## 3. UI Styling & Component Design
+- **Color Palettes:** Generated dynamically based on the stored `seedHue` (OKLCH mapping to standard RGB space) in `Theme.kt`.
+- **Custom Theme Tokens:** Augmented via `DvideExtraColors` provided by the custom `LocalDvideColors` composition local. Always access status, categories, and category soft colors via `MaterialTheme.dvideColors.categoryColor(cat)`.
+- **Asymmetric Shapes:** Rounded corners are asymmetrical (e.g. `ShapeGaugeCard`) to convey directional tension, morphing to standard round cards if the user budget is tight (`metrics.tight == true`).
 
-To ensure this knowledge remains accurate as the codebase evolves, developers and agents must adhere to the following rules:
+---
 
-1. **Iterative Updates:** Every time a database schema changes, a new dependency is added, or the budget algorithm is refactored, the corresponding section of this file must be updated.
-2. **Design Tokens:** If new typography scales, shape tokens, or color seed schemes are introduced, document them in Section 3.
-3. **No Dead Documentation:** Verify that package name references, paths, and build commands match the latest Gradle/manifest configuration.
+## 4. Key Workflows & Gestures
+
+### Daily / Weekly Spend Toggle
+- The daily/weekly view toggle is implemented as a **long click (tap-and-hold)** gesture on the main hero balance card across all three dashboard variants:
+  - `EditorialDashboard.kt`
+  - `GaugeDashboard.kt`
+  - `CardsDashboard.kt`
+- Long click calls `onViewChange(!viewIsWeekly)`. When weekly view is active, the UI:
+  1. Multiplies the daily allowance `metrics.safeToSpend` by `7.0` to show the weekly limit.
+  2. Updates UI labels (e.g. from `"SAFE / DAY"` to `"SAFE / WEEK"`).
+  3. Passes `groupByWeek = true` to the `TransactionTimeline` component.
+
+### Profile Setup Details
+- Clicking on the user's name on the dashboard header redirects the user to the **Personal details** screen (`ProfileScreen.kt`).
+- The settings screen starts directly with the Display options block, with its profile summary card removed. Clicking "Personal details" in Settings also redirects to the profile setup screen.
+- Changes to Name and Email are immediately persisted back to preferences via `viewModel.updateProfile(name, email)`.
+
+### Transaction Deletion
+- Long-pressing a transaction row in `TransactionTimeline.kt` prompts the user with a confirmation alert dialog. Confirming deletion dispatches `deleteTransaction(tx)` to the database, automatically updating all computed metrics.
+
+---
+
+## 5. Development & Verification Guide
+
+### Build Requirements
+- **JDK:** Java 21 (Microsoft OpenJDK or compatible). The vendor constraint in `gradle/gradle-daemon-jvm.properties` is removed to enable local compatibility.
+- **SDK Path:** Configured in `local.properties` (typically pointing to `~/Library/Android/sdk` on macOS).
+
+### CLI Command Reference
+Use the standard Gradle wrapper `gradlew` for local compilation:
+- **Compile:** `./gradlew compileDebugKotlin`
+- **Build debug APK:** `./gradlew assembleDebug`
+- **Run unit tests:** `./gradlew :app:testDebugUnitTest`
+
+### Emulator & Device Management via `android-cli`
+If the custom `android-cli` plugin is active:
+- List virtual devices: `android emulator list`
+- Launch emulator: `android emulator start <AVD_NAME>`
+- Install and run APK: `android run --apks=app/build/outputs/apk/debug/app-debug.apk`
+- Retrieve layout hierarchy: `android layout -p`
+- Capture screen: `android screen capture -o=output.png`
+
+---
+
+## 6. Guidelines for Maintenance
+- **Kotlin Package Declaration:** Source Kotlin files must declare `package com.dvide.app` or sub-packages (e.g., `com.dvide.app.ui.navigation`), while folders reside under `com/dvide/dvide/`.
+- **Do Not Use Plain Colors:** Always resolve colors through `MaterialTheme.colorScheme` or `MaterialTheme.dvideColors` to respect user color scheme changes.
+- **Maintain Test Coverage:** Run `:app:testDebugUnitTest` after modifying `CycleEngine.kt` or `MainViewModel.kt` to ensure budget math is correct.
