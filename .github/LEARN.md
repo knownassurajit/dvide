@@ -6,7 +6,7 @@ This document serves as an onboarding guide and architectural blueprint for **dv
 
 ## 1. Core Concept & Branding
 - **Name:** The application name is creatively styled as `"dv/de"` in user-facing components (headers, settings footer, etc.), but references to the app in class names and folder structures use `dvide`.
-- **Application ID:** `com.dvide.app` (debug suffix `.debug`).
+- **Application ID:** `com.knownassurajit.dvide_finance.app` (debug suffix `.debug`).
 - **Directory Package:** `app/src/main/kotlin/com/dvide/dvide/` contains all Kotlin source files.
 - **Workflow / Design:** Models salary-based budget waterfall matching a repeating cycle anchored to a pay day (Anchor Day).
 
@@ -96,6 +96,6 @@ If the custom `android-cli` plugin is active:
 ---
 
 ## 6. Guidelines for Maintenance
-- **Kotlin Package Declaration:** Source Kotlin files must declare `package com.dvide.app` or sub-packages (e.g., `com.dvide.app.ui.navigation`), while folders reside under `com/dvide/dvide/`.
+- **Kotlin Package Declaration:** Source Kotlin files must declare `package com.knownassurajit.dvide_finance.app` or sub-packages (e.g., `com.knownassurajit.dvide_finance.app.ui.navigation`), while folders reside under `com/dvide/dvide/`.
 - **Do Not Use Plain Colors:** Always resolve colors through `MaterialTheme.colorScheme` or `MaterialTheme.dvideColors` to respect user color scheme changes.
 - **Maintain Test Coverage:** Run `:app:testDebugUnitTest` after modifying `CycleEngine.kt` or `MainViewModel.kt` to ensure budget math is correct.

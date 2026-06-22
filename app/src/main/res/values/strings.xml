@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">dv/de</string>
+    <string name="app_name">DVIDE</string>
     <string name="app_tagline">Manual Finance</string>
 
     <!-- Dashboard -->
@@ -70,5 +70,5 @@
     <string name="cd_open_settings">Open settings</string>
     <string name="cd_back">Back</string>
     <string name="cd_view_cycle">View cycle detail</string>
-    <string name="version_info">dv/de · v1.0 · made by hand</string>
+    <string name="version_info">DVIDE · v1.0 · made by hand</string>
 </resources>

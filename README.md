@@ -55,7 +55,7 @@ Three dashboard layouts surface this engine — pick the one that clicks.
 
 ## Project Structure
 
-> **Note on packaging:** the Kotlin package is `com.dvide.app`, but the source
+> **Note on packaging:** the Kotlin package is `com.knownassurajit.dvide_finance.app`, but the source
 > directories remain `com/dvide/cyclewise/` — Kotlin does not require the folder
 > path to mirror the package declaration, so the historical folder name was kept.
 
@@ -67,7 +67,7 @@ app/
 └── src/
     ├── main/
     │   ├── AndroidManifest.xml
-    │   ├── kotlin/com/dvide/cyclewise/        (package = com.dvide.app)
+    │   ├── kotlin/com/dvide/cyclewise/        (package = com.knownassurajit.dvide_finance.app)
     │   │   ├── CyclewiseApp.kt          ← @HiltAndroidApp
     │   │   ├── MainActivity.kt          ← Edge-to-edge entry point
     │   │   │
@@ -330,7 +330,7 @@ Set these in **Settings → Secrets and variables → Actions**:
 
 | Field | Value |
 |---|---|
-| Application ID | `com.dvide.app` (debug builds use `com.dvide.app.debug`) |
+| Application ID | `com.knownassurajit.dvide_finance.app` (debug builds use `com.knownassurajit.dvide_finance.app.debug`) |
 | Min SDK | 26 (Android 8.0 Oreo) |
 | Target SDK | 35 (Android 15) |
 | Compile SDK | 35 |

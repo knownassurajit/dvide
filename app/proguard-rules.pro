@@ -1,7 +1,7 @@
 # Dvide — ProGuard rules
 
 # Keep Room entities and DAOs
--keep class com.dvide.app.data.** { *; }
+-keep class com.knownassurajit.dvide_finance.app.data.** { *; }
 
 # Keep Hilt generated components
 -keep class dagger.hilt.** { *; }

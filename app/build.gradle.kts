@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace   = "com.dvide.app"
+    namespace   = "com.knownassurajit.dvide_finance.app"
     compileSdk  = 35
 
     defaultConfig {
-        applicationId = "com.dvide.app"
+        applicationId = "com.knownassurajit.dvide_finance.app"
         minSdk = 26
         targetSdk = 35
 
