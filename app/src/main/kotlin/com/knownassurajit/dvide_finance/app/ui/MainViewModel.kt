@@ -6,6 +6,8 @@ import com.knownassurajit.dvide_finance.app.data.model.Transaction
 import com.knownassurajit.dvide_finance.app.data.repository.AppSettings
 import com.knownassurajit.dvide_finance.app.data.repository.SettingsRepository
 import com.knownassurajit.dvide_finance.app.data.repository.TransactionRepository
+import com.knownassurajit.dvide_finance.app.data.repository.CycleRepository
+import com.knownassurajit.dvide_finance.app.data.model.ManualCycle
 import com.knownassurajit.dvide_finance.app.domain.engine.CycleEngine
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
 import com.knownassurajit.dvide_finance.app.domain.model.Metrics
@@ -22,6 +24,7 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val transactionRepo: TransactionRepository,
     private val settingsRepo: SettingsRepository,
+    private val cycleRepo: CycleRepository,
 ) : ViewModel() {
 
     private val today: LocalDate get() = LocalDate.now()
@@ -34,18 +37,28 @@ class MainViewModel @Inject constructor(
     private val transactions: StateFlow<List<Transaction>> = transactionRepo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    // ── Cycles ──────────────────────────────────────────────────────
+    val cycles: StateFlow<List<ManualCycle>> = cycleRepo.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     // ── Computed metrics ──────────────────────────────────────────────────
-    val metrics: StateFlow<Metrics> = combine(settings, transactions) { s, txns ->
-        CycleEngine.computeMetrics(
-            income      = s.income,
-            anchorDay   = s.anchorDay,
-            transactions = txns,
-            today       = today,
-        )
+    val metrics: StateFlow<Metrics?> = combine(cycles, transactions) { allCycles, txns ->
+        val currentCycle = allCycles.firstOrNull { cycle ->
+            !today.isBefore(cycle.startDate) && !today.isAfter(cycle.endDate)
+        }
+        if (currentCycle != null) {
+             CycleEngine.computeMetrics(
+                cycle = currentCycle,
+                transactions = txns,
+                today = today,
+            )
+        } else {
+            null
+        }
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
-        CycleEngine.computeMetrics(3_200.0, 25, emptyList(), LocalDate.now()),
+        null
     )
 
     // ── UI state ──────────────────────────────────────────────────────────
@@ -56,12 +69,11 @@ class MainViewModel @Inject constructor(
     val viewIsWeekly: StateFlow<Boolean> = _viewIsWeekly.asStateFlow()
 
     // ── Dynamic past cycles (archive) ────────────────────────────────────
-    val pastCycles: StateFlow<List<PastCycle>> = combine(settings, transactions) { s, txns ->
+    val pastCycles: StateFlow<List<PastCycle>> = combine(cycles, transactions) { allCycles, txns ->
         CycleEngine.calculatePastCycles(
-            income       = s.income,
-            anchorDay    = s.anchorDay,
+            cycles = allCycles,
             transactions = txns,
-            today        = today,
+            today = today,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -73,8 +85,6 @@ class MainViewModel @Inject constructor(
     fun completeOnboarding(
         name: String,
         email: String,
-        income: Double,
-        anchorDay: Int,
         currencyCode: String,
         regionCode: String,
         weekStartDay: Int,
@@ -83,8 +93,6 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepo.setUserName(name)
             settingsRepo.setUserEmail(email)
-            settingsRepo.setIncome(income)
-            settingsRepo.setAnchorDay(anchorDay)
             settingsRepo.setCurrencyCode(currencyCode)
             settingsRepo.setRegionCode(regionCode)
             settingsRepo.setWeekStartDay(weekStartDay)
@@ -112,6 +120,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun addCycle(cycle: ManualCycle) {
+        viewModelScope.launch {
+            cycleRepo.insert(cycle)
+        }
+    }
+
     fun toggleTheme() {
         viewModelScope.launch { settingsRepo.setDarkTheme(!settings.value.darkTheme) }
     }
@@ -126,14 +140,6 @@ class MainViewModel @Inject constructor(
 
     fun setViewIsWeekly(weekly: Boolean) {
         _viewIsWeekly.value = weekly
-    }
-
-    fun setIncome(income: Double) {
-        viewModelScope.launch { settingsRepo.setIncome(income) }
-    }
-
-    fun setAnchorDay(day: Int) {
-        viewModelScope.launch { settingsRepo.setAnchorDay(day.coerceIn(1, 28)) }
     }
 
     fun updateProfile(name: String, email: String) {
@@ -165,4 +171,3 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { settingsRepo.setNumberFormat(format) }
     }
 }
-

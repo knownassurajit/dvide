@@ -1,4 +1,4 @@
-﻿package com.knownassurajit.dvide_finance.app.ui.components
+package com.knownassurajit.dvide_finance.app.ui.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -11,7 +11,7 @@ object CwIcons {
     val Moon: ImageVector        = Icons.Rounded.DarkMode
     val Plus: ImageVector        = Icons.Rounded.Add
     val Back: ImageVector        = Icons.AutoMirrored.Rounded.ArrowBack
-    val Backspace: ImageVector   = Icons.Rounded.Backspace
+    val Backspace: ImageVector   = Icons.Rounded.Clear
     val Check: ImageVector       = Icons.Rounded.Check
     val Settings: ImageVector    = Icons.Rounded.Settings
     val ChevronRight: ImageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos
@@ -19,4 +19,5 @@ object CwIcons {
     val Info: ImageVector        = Icons.Rounded.Info
     val Export: ImageVector      = Icons.Rounded.Download
     val Person: ImageVector      = Icons.Rounded.Person
+    val History: ImageVector     = Icons.Rounded.History
 }

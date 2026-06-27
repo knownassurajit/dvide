@@ -33,6 +33,7 @@ fun CardsDashboard(
     highlightId: Long?,
     onOpenCycle: () -> Unit,
     onDeleteTransaction: (Transaction) -> Unit,
+    onAddTransaction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val cc    = MaterialTheme.dvideColors
@@ -166,6 +167,7 @@ fun CardsDashboard(
             highlightId = highlightId,
             compact     = true,
             onDeleteTransaction = onDeleteTransaction,
+            onAddTransaction = onAddTransaction,
             modifier    = Modifier.padding(horizontal = 20.dp),
         )
     }
@@ -176,6 +178,7 @@ private fun BucketCard(
     label: String,
     value: String,
     dotColor: androidx.compose.ui.graphics.Color,
+    onAddTransaction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Surface(

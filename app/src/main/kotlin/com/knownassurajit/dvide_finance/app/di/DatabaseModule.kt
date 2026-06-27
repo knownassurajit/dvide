@@ -2,6 +2,7 @@ package com.knownassurajit.dvide_finance.app.di
 
 import android.content.Context
 import androidx.room.Room
+import com.knownassurajit.dvide_finance.app.data.local.CycleDao
 import com.knownassurajit.dvide_finance.app.data.local.DvideDatabase
 import com.knownassurajit.dvide_finance.app.data.local.TransactionDao
 import dagger.Module
@@ -22,8 +23,11 @@ object DatabaseModule {
             context,
             DvideDatabase::class.java,
             DvideDatabase.DATABASE_NAME,
-        ).build()
+        ).fallbackToDestructiveMigration().build()
 
     @Provides
     fun provideTransactionDao(db: DvideDatabase): TransactionDao = db.transactionDao()
+
+    @Provides
+    fun provideCycleDao(db: DvideDatabase): CycleDao = db.cycleDao()
 }

@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -33,6 +34,7 @@ fun TransactionTimeline(
     highlightId: Long?,
     compact: Boolean = false,
     onDeleteTransaction: ((Transaction) -> Unit)? = null,
+    onAddTransaction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val today  = LocalDate.now()
@@ -137,6 +139,31 @@ fun TransactionTimeline(
                         )
                     }
                 }
+            }
+        }
+
+        if (onAddTransaction != null) {
+            Row(
+                 modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp)
+                            .clip(ShapeTimelineRow)
+                            .clickable { onAddTransaction() }
+                            .padding(vertical = 16.dp),
+                 horizontalArrangement = Arrangement.Center,
+                 verticalAlignment = Alignment.CenterVertically
+            ) {
+                 Icon(
+                    imageVector = CwIcons.Plus,
+                    contentDescription = "Add Transaction",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp).padding(end = 8.dp)
+                )
+                Text(
+                    text = "Add Entry",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
 

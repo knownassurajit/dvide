@@ -18,18 +18,22 @@ import androidx.navigation.compose.rememberNavController
 import com.knownassurajit.dvide_finance.app.ui.MainViewModel
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
 import com.knownassurajit.dvide_finance.app.ui.cycle.CycleDetailScreen
+import com.knownassurajit.dvide_finance.app.ui.cycle.ArchiveScreen
 import com.knownassurajit.dvide_finance.app.ui.dashboard.DashboardScreen
 import com.knownassurajit.dvide_finance.app.ui.entry.AddTransactionSheet
 import com.knownassurajit.dvide_finance.app.ui.settings.SettingsScreen
 import com.knownassurajit.dvide_finance.app.ui.settings.ProfileScreen
 import com.knownassurajit.dvide_finance.app.ui.onboarding.OnboardingScreen
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeSheet
+import com.knownassurajit.dvide_finance.app.ui.cycle.AddCycleSheet
 
 private const val ROUTE_HOME     = "home"
 private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_CYCLE    = "cycle"
 private const val ROUTE_PROFILE  = "profile"
+private const val ROUTE_ARCHIVE  = "archive"
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DvideNavHost(
     viewModel: MainViewModel = hiltViewModel(),
@@ -39,15 +43,14 @@ fun DvideNavHost(
     val highlightId by viewModel.highlightId.collectAsStateWithLifecycle()
     val viewWeekly  by viewModel.viewIsWeekly.collectAsStateWithLifecycle()
     val pastCycles  by viewModel.pastCycles.collectAsStateWithLifecycle()
+    val allCycles   by viewModel.cycles.collectAsStateWithLifecycle()
 
     if (!settings.seeded) {
         OnboardingScreen(
-            onComplete = { name, email, income, anchorDay, currencyCode, regionCode, weekStartDay, numberFormat ->
+            onComplete = { name, email, currencyCode, regionCode, weekStartDay, numberFormat ->
                 viewModel.completeOnboarding(
                     name = name,
                     email = email,
-                    income = income,
-                    anchorDay = anchorDay,
                     currencyCode = currencyCode,
                     regionCode = regionCode,
                     weekStartDay = weekStartDay,
@@ -63,6 +66,7 @@ fun DvideNavHost(
     val currentRoute    = navBackStack?.destination?.route
 
     var showAddSheet by remember { mutableStateOf(false) }
+    var showAddCycleSheet by remember { mutableStateOf(false) }
 
     // Slide transitions: enter from right, exit to left
     val enterPush  = slideInHorizontally(spring(stiffness = 300f)) { it }  + fadeIn()
@@ -71,16 +75,6 @@ fun DvideNavHost(
     val exitPop    = slideOutHorizontally(spring(stiffness = 300f)) { it } + fadeOut()
 
     Scaffold(
-        floatingActionButton = {
-            // FAB only on home screen
-            AnimatedVisibility(
-                visible = currentRoute == ROUTE_HOME,
-                enter   = scaleIn(spring(stiffness = 400f)) + fadeIn(),
-                exit    = scaleOut() + fadeOut(),
-            ) {
-                LargeFab(onClick = { showAddSheet = true })
-            }
-        },
         containerColor = MaterialTheme.colorScheme.surface,
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -109,6 +103,9 @@ fun DvideNavHost(
                         onOpenCycle    = { navController.navigate(ROUTE_CYCLE) },
                         onOpenProfile  = { navController.navigate(ROUTE_PROFILE) },
                         onDeleteTransaction = viewModel::deleteTransaction,
+                        onAddCycle = { showAddCycleSheet = true },
+                        onAddTransaction = { showAddSheet = true },
+                        onOpenArchive = { navController.navigate(ROUTE_ARCHIVE) }
                     )
                 }
 
@@ -130,8 +127,6 @@ fun DvideNavHost(
                         onRegionChange      = viewModel::setRegionCode,
                         onWeekStartChange   = viewModel::setWeekStartDay,
                         onNumberFormatChange = viewModel::setNumberFormat,
-                        onIncomeChange      = viewModel::setIncome,
-                        onAnchorDayChange   = viewModel::setAnchorDay,
                     )
                 }
 
@@ -149,6 +144,19 @@ fun DvideNavHost(
                     )
                 }
 
+                 composable(
+                    route               = ROUTE_ARCHIVE,
+                    enterTransition     = { enterPush },
+                    exitTransition      = { exitPush },
+                    popEnterTransition  = { enterPop },
+                    popExitTransition   = { exitPop },
+                ) {
+                    ArchiveScreen(
+                        pastCycles = pastCycles,
+                        onClose = { navController.popBackStack() }
+                    )
+                }
+
                 composable(
                     route               = ROUTE_CYCLE,
                     enterTransition     = { enterPush },
@@ -158,13 +166,54 @@ fun DvideNavHost(
                 ) {
                     CycleDetailScreen(
                         metrics    = metrics,
-                        income     = settings.income,
-                        anchorDay  = settings.anchorDay,
                         archive    = pastCycles,
                         onClose    = { navController.popBackStack() },
                     )
                 }
             }
+        }
+    }
+
+    if (showAddCycleSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddCycleSheet = false },
+            sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            shape            = ShapeSheet,
+            containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
+            dragHandle       = {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 12.dp, bottom = 8.dp)
+                        .size(width = 38.dp, height = 5.dp),
+                )
+                BottomSheetDefaults.DragHandle()
+            },
+        ) {
+            Row(
+                modifier          = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text  = "New Cycle",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                IconButton(onClick = { showAddCycleSheet = false }) {
+                    Icon(CwIcons.Back, contentDescription = "Close")
+                }
+            }
+            AddCycleSheet(
+                existingCycles = allCycles,
+                onAdd = { cycle ->
+                    viewModel.addCycle(cycle)
+                    showAddCycleSheet = false
+                }
+            )
         }
     }
 
@@ -213,25 +262,5 @@ fun DvideNavHost(
                 },
             )
         }
-    }
-}
-
-@Composable
-private fun LargeFab(onClick: () -> Unit) {
-    FloatingActionButton(
-        onClick        = onClick,
-        modifier       = Modifier
-            .navigationBarsPadding()
-            .padding(end = 4.dp, bottom = 12.dp),
-        shape          = CircleShape,
-        containerColor = MaterialTheme.colorScheme.primary,
-        contentColor   = MaterialTheme.colorScheme.onPrimary,
-        elevation      = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
-    ) {
-        Icon(
-            imageVector        = CwIcons.Plus,
-            contentDescription = "Add transaction",
-            modifier           = Modifier.size(28.dp),
-        )
     }
 }

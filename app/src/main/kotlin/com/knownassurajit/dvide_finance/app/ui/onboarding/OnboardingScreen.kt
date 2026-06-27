@@ -1,7 +1,10 @@
 package com.knownassurajit.dvide_finance.app.ui.onboarding
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,19 +17,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
 import com.knownassurajit.dvide_finance.app.ui.settings.CurrencySelectDialog
+import com.knownassurajit.dvide_finance.app.ui.settings.NumberFormatSelectDialog
 import com.knownassurajit.dvide_finance.app.ui.settings.RegionSelectDialog
 import com.knownassurajit.dvide_finance.app.ui.settings.WeekStartSelectDialog
-import com.knownassurajit.dvide_finance.app.ui.settings.NumberFormatSelectDialog
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeCommitBtn
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeSettingsGroup
 
@@ -35,359 +36,209 @@ fun OnboardingScreen(
     onComplete: (
         name: String,
         email: String,
-        income: Double,
-        anchorDay: Int,
         currencyCode: String,
         regionCode: String,
         weekStartDay: Int,
         numberFormat: String
-    ) -> Unit,
-    modifier: Modifier = Modifier,
+    ) -> Unit
 ) {
-    var step by remember { mutableStateOf(1) }
+    var step by remember { mutableIntStateOf(1) }
 
-    // Persona
+    // State for Step 1: Persona
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    val isPersonaValid = name.isNotBlank() && email.isNotBlank() && email.contains("@")
 
-    // Finance Engine
-    var incomeStr by remember { mutableStateOf("") }
-    var anchorDayStr by remember { mutableStateOf("25") }
-
-    // Regional
-    var currencyCode by remember {
-        mutableStateOf(
-            try {
-                java.util.Currency.getInstance(java.util.Locale.getDefault()).currencyCode
-            } catch (e: Exception) {
-                "GBP"
-            }
-        )
-    }
+    // State for Step 2: Localization
+    var currencyCode by remember { mutableStateOf(try { java.util.Currency.getInstance(java.util.Locale.getDefault()).currencyCode } catch (e: Exception) { "GBP" }) }
     var regionCode by remember {
-        mutableStateOf(
-            run {
-                val country = java.util.Locale.getDefault().country
-                if (country.isNullOrEmpty()) "GB" else country
-            }
-        )
+        mutableStateOf(try {
+            val c = java.util.Locale.getDefault().country
+            if (c.isNullOrEmpty()) "GB" else c
+        } catch (e: Exception) { "GB" })
     }
-    var weekStartDay by remember { mutableStateOf(2) } // Monday
+    var weekStartDay by remember { mutableIntStateOf(2) } // Monday default
     var numberFormat by remember { mutableStateOf("DEFAULT") }
 
-    // Dialog flags
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showRegionDialog by remember { mutableStateOf(false) }
     var showWeekStartDialog by remember { mutableStateOf(false) }
     var showNumberFormatDialog by remember { mutableStateOf(false) }
 
-    // Validation helpers
-    val isPersonaValid = name.trim().isNotEmpty()
-
-    val parsedIncome = incomeStr.toDoubleOrNull() ?: 0.0
-    val parsedAnchorDay = anchorDayStr.toIntOrNull() ?: 0
-    val isFinanceValid = parsedIncome > 0.0 && parsedAnchorDay in 1..28
-
     Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top branding/header
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Step Indicator
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Spacer(modifier = Modifier.height(16.dp))
-                // Logo brand text "dv/de"
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "dv",
-                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                        color = MaterialTheme.colorScheme.primary
+                repeat(2) { idx ->
+                    val isActive = idx + 1 <= step
+                    Box(
+                        modifier = Modifier
+                            .size(if (isActive) 12.dp else 8.dp)
+                            .background(
+                                color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                shape = CircleShape
+                            )
                     )
-                    Text(
-                        text = "/",
-                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                    Text(
-                        text = "de",
-                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-                // Page indicator / steps
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    repeat(3) { index ->
-                        val active = index + 1 == step
-                        Box(
-                            modifier = Modifier
-                                .size(width = if (active) 24.dp else 8.dp, height = 8.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (active) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.surfaceContainerHighest
-                                )
-                        )
-                    }
                 }
             }
 
-            // Central slide wizard with animations
-            AnimatedContent(
-                targetState = step,
-                transitionSpec = {
-                    if (targetState > initialState) {
-                        (slideInHorizontally(spring(stiffness = 300f)) { it } + fadeIn()) togetherWith
-                                (slideOutHorizontally(spring(stiffness = 300f)) { -it / 4 } + fadeOut())
-                    } else {
-                        (slideInHorizontally(spring(stiffness = 300f)) { -it } + fadeIn()) togetherWith
-                                (slideOutHorizontally(spring(stiffness = 300f)) { it / 4 } + fadeOut())
-                    }
-                },
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Animated content transitions between steps
+            Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                label = "onboarding_slide"
-            ) { currentStep ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(vertical = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
+                contentAlignment = Alignment.TopCenter
+            ) {
+                AnimatedContent(
+                    targetState = step,
+                    transitionSpec = {
+                        fadeIn(tween(400)) togetherWith fadeOut(tween(400))
+                    },
+                    label = "onboarding_step"
+                ) { currentStep ->
                     when (currentStep) {
                         1 -> {
-                            // Step 1: Persona Details
-                            Text(
-                                text = "Let's establish your persona",
-                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Text(
-                                text = "Dvide is a private, manual ledger built for absolute control. Everything stays safely on your device.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // Name field
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.verticalScroll(rememberScrollState())
+                            ) {
                                 Text(
-                                    text = "Name",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = "Welcome to Dvide",
+                                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
+                                Text(
+                                    text = "Let's personalize your finance workspace.",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+
                                 OutlinedTextField(
                                     value = name,
                                     onValueChange = { name = it },
-                                    placeholder = { Text("Enter your name") },
-                                    modifier = Modifier.fillMaxWidth().testTag("onboard_name_field"),
-                                    shape = RoundedCornerShape(16.dp),
+                                    label = { Text("What should we call you?") },
+                                    modifier = Modifier.fillMaxWidth().testTag("onboard_name"),
+                                    shape = RoundedCornerShape(12.dp),
+                                    singleLine = true,
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        unfocusedBorderColor = Color.Transparent,
                                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                                         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                    ),
-                                    singleLine = true
-                                )
-                            }
-
-                            // Email field
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(
-                                    text = "Email (optional)",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 )
                                 OutlinedTextField(
                                     value = email,
                                     onValueChange = { email = it },
-                                    placeholder = { Text("Enter your email") },
-                                    modifier = Modifier.fillMaxWidth().testTag("onboard_email_field"),
-                                    shape = RoundedCornerShape(16.dp),
+                                    label = { Text("Your Email") },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                                    modifier = Modifier.fillMaxWidth().testTag("onboard_email"),
+                                    shape = RoundedCornerShape(12.dp),
+                                    singleLine = true,
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        unfocusedBorderColor = Color.Transparent,
                                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                                         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                    ),
-                                    singleLine = true
+                                    )
                                 )
                             }
                         }
                         2 -> {
-                            // Step 2: Finance Engine settings
-                            Text(
-                                text = "Configure your Finance Cycle",
-                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Text(
-                                text = "Establish your income budget and when your financial cycles reset (typically payday).",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            // Step 2: Localization Preferences
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.verticalScroll(rememberScrollState())
+                            ) {
+                                Text(
+                                    text = "Customize regional options",
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Text(
+                                    text = "Review defaults or change your preferred symbol formatting and calendar boundaries.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
 
-                            // Income field
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                val symbol = try {
+                                val currencySymbol = try {
                                     java.util.Currency.getInstance(currencyCode).getSymbol(java.util.Locale("", regionCode))
                                 } catch (e: Exception) {
                                     "£"
                                 }
-                                Text(
-                                    text = "Monthly income/budget ($symbol)",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                OutlinedTextField(
-                                    value = incomeStr,
-                                    onValueChange = { incomeStr = it },
-                                    placeholder = { Text("e.g. 3000") },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    modifier = Modifier.fillMaxWidth().testTag("onboard_income_field"),
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        unfocusedBorderColor = Color.Transparent,
-                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                    ),
-                                    singleLine = true
-                                )
-                            }
-
-                            // Anchor Day field
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(
-                                    text = "Cycle anchor day (1-28)",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                OutlinedTextField(
-                                    value = anchorDayStr,
-                                    onValueChange = { anchorDayStr = it },
-                                    placeholder = { Text("e.g. 25") },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    modifier = Modifier.fillMaxWidth().testTag("onboard_anchor_field"),
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        unfocusedBorderColor = Color.Transparent,
-                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                    ),
-                                    singleLine = true
-                                )
-                                if (anchorDayStr.isNotEmpty() && parsedAnchorDay !in 1..28) {
-                                    Text(
-                                        text = "Must be between 1 and 28",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.padding(start = 4.dp)
-                                    )
+                                val regionLabel = try {
+                                    java.util.Locale("", regionCode).displayCountry
+                                } catch (e: Exception) {
+                                    "United Kingdom"
                                 }
-                            }
-                        }
-                        3 -> {
-                            // Step 3: Localization Preferences
-                            Text(
-                                text = "Customize regional options",
-                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Text(
-                                text = "Review defaults or change your preferred symbol formatting and calendar boundaries.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                                val weekStartLabel = when (weekStartDay) {
+                                    java.util.Calendar.SATURDAY -> "Saturday"
+                                    java.util.Calendar.SUNDAY -> "Sunday"
+                                    else -> "Monday"
+                                }
+                                val numberFormatLabel = when (numberFormat) {
+                                    "DOT_DECIMAL" -> "1,234.56"
+                                    "COMMA_DECIMAL" -> "1.234,56"
+                                    "SPACE_DECIMAL" -> "1 234,56"
+                                    else -> "Default for Region"
+                                }
 
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            val currencySymbol = try {
-                                java.util.Currency.getInstance(currencyCode).getSymbol(java.util.Locale("", regionCode))
-                            } catch (e: Exception) {
-                                "£"
-                            }
-                            val regionLabel = try {
-                                java.util.Locale("", regionCode).displayCountry
-                            } catch (e: Exception) {
-                                "United Kingdom"
-                            }
-                            val weekStartLabel = when (weekStartDay) {
-                                java.util.Calendar.SATURDAY -> "Saturday"
-                                java.util.Calendar.SUNDAY -> "Sunday"
-                                else -> "Monday"
-                            }
-                            val numberFormatLabel = when (numberFormat) {
-                                "DOT_DECIMAL" -> "1,234.56"
-                                "COMMA_DECIMAL" -> "1.234,56"
-                                "SPACE_DECIMAL" -> "1 234,56"
-                                else -> "Default for Region"
-                            }
-
-                            Surface(
-                                shape = ShapeSettingsGroup,
-                                color = MaterialTheme.colorScheme.surfaceContainer,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column {
-                                    OnboardingRow(
-                                        label = "Currency",
-                                        value = "$currencyCode · $currencySymbol",
-                                        onClick = { showCurrencyDialog = true }
-                                    )
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-                                    OnboardingRow(
-                                        label = "Region",
-                                        value = regionLabel,
-                                        onClick = { showRegionDialog = true }
-                                    )
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-                                    OnboardingRow(
-                                        label = "Week starts on",
-                                        value = weekStartLabel,
-                                        onClick = { showWeekStartDialog = true }
-                                    )
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-                                    OnboardingRow(
-                                        label = "Number format",
-                                        value = numberFormatLabel,
-                                        onClick = { showNumberFormatDialog = true }
-                                    )
+                                Surface(
+                                    shape = ShapeSettingsGroup,
+                                    color = MaterialTheme.colorScheme.surfaceContainer,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column {
+                                        OnboardingRow(
+                                            label = "Currency",
+                                            value = "$currencyCode · $currencySymbol",
+                                            onClick = { showCurrencyDialog = true }
+                                        )
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                                        OnboardingRow(
+                                            label = "Region",
+                                            value = regionLabel,
+                                            onClick = { showRegionDialog = true }
+                                        )
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                                        OnboardingRow(
+                                            label = "Week starts on",
+                                            value = weekStartLabel,
+                                            onClick = { showWeekStartDialog = true }
+                                        )
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                                        OnboardingRow(
+                                            label = "Number format",
+                                            value = numberFormatLabel,
+                                            onClick = { showNumberFormatDialog = true }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -419,14 +270,12 @@ fun OnboardingScreen(
 
                 Button(
                     onClick = {
-                        if (step < 3) {
+                        if (step < 2) {
                             step += 1
                         } else {
                             onComplete(
                                 name.trim(),
                                 email.trim(),
-                                parsedIncome,
-                                parsedAnchorDay,
                                 currencyCode,
                                 regionCode,
                                 weekStartDay,
@@ -441,7 +290,6 @@ fun OnboardingScreen(
                     shape = ShapeCommitBtn,
                     enabled = when (step) {
                         1 -> isPersonaValid
-                        2 -> isFinanceValid
                         else -> true
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -452,7 +300,7 @@ fun OnboardingScreen(
                     )
                 ) {
                     Text(
-                        text = if (step == 3) "Build workspace" else "Continue",
+                        text = if (step == 2) "Build workspace" else "Continue",
                         fontWeight = FontWeight.Bold
                     )
                 }
