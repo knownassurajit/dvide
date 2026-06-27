@@ -20,193 +20,136 @@ import com.knownassurajit.dvide_finance.app.data.model.Category
 import com.knownassurajit.dvide_finance.app.domain.model.Metrics
 import com.knownassurajit.dvide_finance.app.domain.model.PastCycle
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
-import com.knownassurajit.dvide_finance.app.ui.settings.SettingsDivider
-import com.knownassurajit.dvide_finance.app.ui.settings.SettingsGroup
-import com.knownassurajit.dvide_finance.app.ui.settings.SettingsLabel
+import com.knownassurajit.dvide_finance.app.ui.theme.LocalCurrencyFormatter
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeSettingsGroup
 import com.knownassurajit.dvide_finance.app.ui.theme.dvideColors
-import com.knownassurajit.dvide_finance.app.ui.theme.LocalCurrencyFormatter
 import com.knownassurajit.dvide_finance.app.util.ordinal
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CycleDetailScreen(
-    metrics: Metrics,
-    income: Double,
-    anchorDay: Int,
+    metrics: Metrics?,
     archive: List<PastCycle>,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    val cc      = MaterialTheme.dvideColors
     val formatter = LocalCurrencyFormatter.current
-    val ended   = metrics.ended
-    val surplus = metrics.balance >= 0
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color    = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-
-            // Screen header
-            Row(
-                modifier          = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                IconButton(onClick = onClose) {
-                    Icon(
-                        imageVector        = CwIcons.Back,
-                        contentDescription = "Back",
-                        tint               = MaterialTheme.colorScheme.onSurface,
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Cycle metrics",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                     )
-                }
-                Text(
-                    text  = if (ended) "Cycle closed" else "This cycle",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                    color = MaterialTheme.colorScheme.onSurface,
+                },
+                navigationIcon = {
+                    IconButton(onClick = onClose) {
+                        Icon(CwIcons.Back, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
                 )
-            }
-
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) { paddingValues ->
+        if (metrics == null) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 40.dp),
+                    .padding(paddingValues)
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-
-                // ── Hero summary ──
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
-                    shape = RoundedCornerShape(26.dp),
-                    color = if (ended)
-                        if (surplus) MaterialTheme.colorScheme.primaryContainer
-                        else cc.statusContainer
-                    else MaterialTheme.colorScheme.surface,
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
-                        Text(
-                            text  = metrics.cycle.label(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            letterSpacing = androidx.compose.ui.unit.TextUnit(0.16f, androidx.compose.ui.unit.TextUnitType.Em),
-                        )
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text  = "${if (ended && surplus) "+" else if (ended) "−" else ""}${formatter.format(kotlin.math.abs(metrics.balance))}",
-                                style = MaterialTheme.typography.displaySmall.copy(
-                                    color = if (ended && !surplus) cc.status else MaterialTheme.colorScheme.onSurface,
-                                ),
-                                modifier = Modifier.alignByBaseline(),
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text  = when {
-                                    ended && surplus -> "surplus"
-                                    ended            -> "borrowed"
-                                    else             -> "left to spend"
-                                },
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Normal,
-                                    color      = MaterialTheme.colorScheme.onSurfaceVariant,
-                                ),
-                                modifier = Modifier.alignByBaseline(),
-                            )
-                        }
-                        Text(
-                            text  = if (ended)
-                                "${metrics.cycle.totalDays} days · settled"
-                            else
-                                "${metrics.cycle.dayIndex + 1} of ${metrics.cycle.totalDays} days · ${metrics.cycle.remaining} remaining",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-
-                // ── Configuration ──
-                SettingsLabel("Configuration")
+                 Text(
+                    text = "No Active Cycle",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(32.dp),
+            ) {
+                // ── Parameters ──
+                SettingsLabel("Parameters")
                 SettingsGroup {
                     CycleRow(
-                        label    = "Cycle anchor",
-                        subLabel = "Salary lands this day each month",
-                        trailing = anchorDay.ordinal(),
-                        chevron  = true,
+                        label    = "Cycle ends",
+                        subLabel = "${metrics.cycle.remaining} days remaining",
+                        trailing = metrics.cycle.end.dayOfMonth.ordinal(),
                     )
                     SettingsDivider()
-                    CycleRow(label = "Monthly income",  trailing = formatter.format(income), chevron = true)
-                    SettingsDivider()
-                    CycleRow(label = "Cycle window",    trailing = metrics.cycle.label())
+                    CycleRow(
+                        label    = "Baseline Income",
+                        subLabel = "Fixed deposit",
+                        trailing = formatter.format(metrics.income),
+                    )
                 }
 
-                // ── The waterfall ──
-                SettingsLabel("The waterfall")
+                // ── Waterfall (Spendable calculation) ──
+                SettingsLabel("Spendable")
                 SettingsGroup {
-                    WaterfallRow(label = "Income",    value = metrics.income,    op = "")
-                    SettingsDivider()
                     WaterfallRow(
-                        label    = "Set aside", value = metrics.allocated, op = "−",
-                        subLabel = "Savings · Investment · Security",
+                        label = "Income",
+                        op    = "+",
+                        value = metrics.income,
                     )
-                    SettingsDivider()
-                    WaterfallRow(label = "Spendable", value = metrics.spendable, op = "=", strong = true, rule = true)
-                    SettingsDivider()
-                    WaterfallRow(
-                        label    = "Spent", value = metrics.spent, op = "−",
-                        subLabel = "Essentials · Lifestyle",
-                    )
-                    SettingsDivider()
-                    WaterfallRow(
-                        label  = if (ended) if (surplus) "Surplus" else "Borrowed" else "Balance",
-                        value  = kotlin.math.abs(metrics.balance),
-                        op     = "=",
-                        strong = true,
-                        rule   = true,
-                        valueColor = if (!surplus) MaterialTheme.dvideColors.status else null,
-                    )
-                }
-
-                // ── Outlook (active cycle only) ──
-                if (!ended) {
-                    SettingsLabel("Outlook")
-                    SettingsGroup {
-                        Surface(
-                            color   = MaterialTheme.colorScheme.surfaceContainerLow,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Row(
-                                modifier          = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 18.dp, vertical = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text("Projected close", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                                    Text(
-                                        "At your current spending pace",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                BalanceLabel(metrics.projectedClose)
-                            }
-                        }
-                        SettingsDivider()
-                        CycleRow(
-                            label    = "Safe to spend",
-                            subLabel = "Per day · for ${metrics.cycle.remaining} days",
-                            trailing = formatter.format(metrics.safeToSpend, 2),
+                    if (metrics.allocated > 0) {
+                        WaterfallRow(
+                            label = "Set aside",
+                            op    = "−",
+                            value = metrics.allocated,
+                            subLabel = "Excluded from pool",
                         )
                     }
+                    WaterfallRow(
+                        label  = "Spendable",
+                        op     = "=",
+                        value  = metrics.spendable,
+                        strong = true,
+                        rule   = true,
+                    )
                 }
 
-                // ── Set aside breakdown ──
+                // ── Velocity & projections ──
+                SettingsLabel("Projection")
+                SettingsGroup {
+                    val daysPassed = metrics.cycle.dayIndex + 1
+                    WaterfallRow(
+                        label    = "Daily velocity",
+                        op       = "Ø",
+                        value    = metrics.dailyVelocity,
+                        subLabel = "${formatter.format(metrics.spent)} spent / $daysPassed days",
+                    )
+                    WaterfallRow(
+                        label    = "Projected spend",
+                        op       = "~",
+                        value    = metrics.projectedSpend,
+                        subLabel = "${formatter.format(metrics.dailyVelocity)} × ${metrics.cycle.totalDays} total days",
+                    )
+                    val projColor = if (metrics.projectedClose >= 0) MaterialTheme.colorScheme.onSurface
+                                    else MaterialTheme.dvideColors.status
+                    WaterfallRow(
+                        label      = "Projected close",
+                        op         = "→",
+                        value      = kotlin.math.abs(metrics.projectedClose),
+                        strong     = true,
+                        rule       = true,
+                        valueColor = projColor,
+                        subLabel   = if (metrics.projectedClose >= 0) "Expected surplus" else "Expected deficit",
+                    )
+                }
+
+                // ── Aside breakdown ──
                 val asideCategories = metrics.byCategory.entries
                     .filter { (cat, _) ->
                         Category.kindOf(cat, metrics.transactions.firstOrNull { it.category == cat }?.kind) == Category.Kind.ASIDE
@@ -214,7 +157,7 @@ fun CycleDetailScreen(
                     .filter { it.value > 0 }
 
                 if (asideCategories.isNotEmpty()) {
-                    SettingsLabel("Set aside · ${formatter.format(metrics.allocated)}")
+                    SettingsLabel("Set Aside · ${formatter.format(metrics.allocated)}")
                     Surface(
                         shape    = ShapeSettingsGroup,
                         color    = MaterialTheme.colorScheme.surfaceContainer,
@@ -257,47 +200,39 @@ fun CycleDetailScreen(
                         }
                     }
                 }
-
-                // ── Past cycles archive ──
-                if (archive.isNotEmpty()) {
-                    SettingsLabel("Past cycles")
-                    SettingsGroup {
-                        archive.forEachIndexed { index, pastCycle ->
-                            if (index > 0) SettingsDivider()
-                            Surface(
-                                onClick = {},
-                                color   = MaterialTheme.colorScheme.surfaceContainer,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Row(
-                                    modifier          = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 18.dp, vertical = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(pastCycle.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                                        Text(pastCycle.range, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                    BalanceLabel(pastCycle.balance)
-                                    Spacer(Modifier.width(4.dp))
-                                    Icon(
-                                        imageVector        = CwIcons.ChevronRight,
-                                        contentDescription = null,
-                                        tint               = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                        modifier           = Modifier.size(18.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }
 }
 
 // ── Shared sub-composables ──
+@Composable
+fun SettingsLabel(text: String) {
+    Text(
+        text  = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+    )
+}
+
+@Composable
+fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        shape = ShapeSettingsGroup,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column {
+            content()
+        }
+    }
+}
+
+@Composable
+fun SettingsDivider() {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+}
 
 @Composable
 private fun CycleRow(
@@ -457,7 +392,7 @@ private fun CategoryBreakdownRow(
 }
 
 @Composable
-private fun BalanceLabel(balance: Double) {
+fun BalanceLabel(balance: Double) {
     val positive = balance >= 0
     val cc       = MaterialTheme.dvideColors
     Text(

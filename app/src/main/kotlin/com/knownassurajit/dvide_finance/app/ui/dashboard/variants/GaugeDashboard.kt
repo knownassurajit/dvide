@@ -33,6 +33,7 @@ fun GaugeDashboard(
     highlightId: Long?,
     onOpenCycle: () -> Unit,
     onDeleteTransaction: (Transaction) -> Unit,
+    onAddTransaction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val cc    = MaterialTheme.dvideColors
@@ -152,6 +153,7 @@ fun GaugeDashboard(
             highlightId = highlightId,
             compact     = true,
             onDeleteTransaction = onDeleteTransaction,
+            onAddTransaction = onAddTransaction,
             modifier    = Modifier.padding(horizontal = 20.dp),
         )
     }

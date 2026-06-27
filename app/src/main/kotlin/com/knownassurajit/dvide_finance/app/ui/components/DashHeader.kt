@@ -21,6 +21,8 @@ fun DashHeader(
     onToggleTheme: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenProfile: () -> Unit,
+    onAddCycle: () -> Unit,
+    onOpenArchive: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -33,36 +35,49 @@ fun DashHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 24.dp, end = 16.dp, top = 56.dp, bottom = 12.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 56.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment     = Alignment.CenterVertically,
     ) {
-        Column(
-            modifier = Modifier
-                .clickable { onOpenProfile() }
-                .testTag("dashboard_profile_click")
+        Row(
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text          = greeting,
-                style         = MaterialTheme.typography.labelSmall,
-                color         = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = androidx.compose.ui.unit.TextUnit(0.16f, androidx.compose.ui.unit.TextUnitType.Em),
-            )
-            Text(
-                text       = userName,
-                style      = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                color      = MaterialTheme.colorScheme.onSurface,
-            )
+             IconButton(onClick = onOpenArchive) {
+                Icon(
+                    imageVector = CwIcons.History,
+                    contentDescription = "Archive",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+             Column(
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .clickable { onOpenProfile() }
+                    .testTag("dashboard_profile_click")
+            ) {
+                Text(
+                    text          = greeting,
+                    style         = MaterialTheme.typography.labelSmall,
+                    color         = MaterialTheme.colorScheme.onSurfaceVariant,
+                    letterSpacing = androidx.compose.ui.unit.TextUnit(0.16f, androidx.compose.ui.unit.TextUnitType.Em),
+                )
+                Text(
+                    text       = userName,
+                    style      = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                    color      = MaterialTheme.colorScheme.onSurface,
+                )
+            }
         }
+
 
         Row(
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            IconButton(onClick = onToggleTheme) {
+             IconButton(onClick = onAddCycle) {
                 Icon(
-                    imageVector  = if (darkTheme) CwIcons.Sun else CwIcons.Moon,
-                    contentDescription = "Toggle theme",
+                    imageVector  = CwIcons.Plus,
+                    contentDescription = "Add Cycle",
                     tint         = MaterialTheme.colorScheme.onSurface,
                 )
             }

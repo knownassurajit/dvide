@@ -31,6 +31,7 @@ fun EditorialDashboard(
     highlightId: Long?,
     onOpenCycle: () -> Unit,
     onDeleteTransaction: (Transaction) -> Unit,
+    onAddTransaction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val formatter = LocalCurrencyFormatter.current
@@ -178,6 +179,7 @@ fun EditorialDashboard(
             groupByWeek  = viewIsWeekly,
             highlightId  = highlightId,
             onDeleteTransaction = onDeleteTransaction,
+            onAddTransaction = onAddTransaction,
             modifier     = Modifier.padding(horizontal = 20.dp),
         )
     }

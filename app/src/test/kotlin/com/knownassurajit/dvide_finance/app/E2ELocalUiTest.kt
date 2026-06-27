@@ -84,7 +84,7 @@ class E2ELocalUiTest {
         }
 
         // Filter by typing "USD" in the search box
-        composeTestRule.onNodeWithTag("currency_search_input").performTextInput("USD")
+        composeTestRule.onNodeWithText("Search currency...").performTextInput("USD")
         composeTestRule.waitForIdle()
 
         // Select USD in the filtered dialog list
@@ -101,18 +101,14 @@ class E2ELocalUiTest {
         var completed = false
         var savedName = ""
         var savedEmail = ""
-        var savedIncome = 0.0
-        var savedAnchor = 0
 
         composeTestRule.setContent {
             DvideTheme {
                 OnboardingScreen(
-                    onComplete = { name, email, income, anchor, _, _, _, _ ->
+                    onComplete = { name, email, _, _, _, _ ->
                         completed = true
                         savedName = name
                         savedEmail = email
-                        savedIncome = income
-                        savedAnchor = anchor
                     }
                 )
             }
@@ -120,19 +116,12 @@ class E2ELocalUiTest {
 
         // --- STEP 1: Persona ---
         // Input Name and Email
-        composeTestRule.onNodeWithTag("onboard_name_field").performTextInput("Bob")
-        composeTestRule.onNodeWithTag("onboard_email_field").performTextInput("bob@dvide.app")
+        composeTestRule.onNodeWithTag("onboard_name").performTextInput("Bob")
+        composeTestRule.onNodeWithTag("onboard_email").performTextInput("bob@dvide.app")
         // Click Continue
         composeTestRule.onNodeWithTag("onboard_next_button").performClick()
 
-        // --- STEP 2: Finance Cycle ---
-        // Input Income and Anchor Day
-        composeTestRule.onNodeWithTag("onboard_income_field").performTextInput("2500")
-        composeTestRule.onNodeWithTag("onboard_anchor_field").performTextReplacement("15")
-        // Click Continue
-        composeTestRule.onNodeWithTag("onboard_next_button").performClick()
-
-        // --- STEP 3: Localization Preferences ---
+        // --- STEP 2: Localization Preferences ---
         // Click Build workspace
         composeTestRule.onNodeWithTag("onboard_next_button").performClick()
 
@@ -140,7 +129,5 @@ class E2ELocalUiTest {
         assertTrue(completed)
         assertEquals("Bob", savedName)
         assertEquals("bob@dvide.app", savedEmail)
-        assertEquals(2500.0, savedIncome, 0.001)
-        assertEquals(15, savedAnchor)
     }
 }
