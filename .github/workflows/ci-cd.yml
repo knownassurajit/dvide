@@ -29,6 +29,8 @@ env:
   APK_RELEASE:    dvide-release.apk
   AAB_RELEASE:    dvide-release.aab
 
+permissions: read-all
+
 jobs:
 
   # ┌─────────────────────────────────────────────────────────────────────────┐
@@ -50,16 +52,16 @@ jobs:
           apt-get install -y --no-install-recommends unzip curl git ca-certificates
 
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@00186d05c5dea8ab6b52aa2e3012398c3cc3d24b
 
       - name: Validate Gradle wrapper integrity
-        uses: gradle/actions/wrapper-validation@v4
+        uses: gradle/actions/wrapper-validation@9c66539db1ef3f99efb786a3d5e51e60b3e0e3b4
 
       - name: Set up Gradle (cache + build-scan)
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6b82f7e4f2de2f67b4f5e6
         with:
           gradle-version: wrapper
           cache-read-only: ${{ github.event_name == 'pull_request' }}
@@ -75,7 +77,7 @@ jobs:
 
       - name: Upload JUnit XML results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6f75b7ca4f3a20b5e1e8e7e1adf6b
         with:
           name: unit-test-results
           path: app/build/test-results/testDebugUnitTest/
@@ -83,7 +85,7 @@ jobs:
 
       - name: Upload HTML test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6f75b7ca4f3a20b5e1e8e7e1adf6b
         with:
           name: unit-test-report
           path: app/build/reports/tests/testDebugUnitTest/
@@ -91,7 +93,7 @@ jobs:
 
       - name: Upload lint HTML report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6f75b7ca4f3a20b5e1e8e7e1adf6b
         with:
           name: lint-report
           path: app/build/reports/lint-results-debug.html
@@ -99,7 +101,7 @@ jobs:
 
       - name: Upload lint XML results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6f75b7ca4f3a20b5e1e8e7e1adf6b
         with:
           name: lint-results-xml
           path: app/build/reports/lint-results-debug.xml
@@ -107,7 +109,7 @@ jobs:
 
       - name: Annotate PR with test failures
         if: failure() && github.event_name == 'pull_request'
-        uses: mikepenz/action-junit-report@v4
+        uses: mikepenz/action-junit-report@cf701569ca27f61ede4f8bb71fee382ad43c1e3a
         with:
           report_paths: app/build/test-results/testDebugUnitTest/*.xml
           check_name: Unit Test Results
@@ -135,15 +137,15 @@ jobs:
           apt-get install -y --no-install-recommends unzip curl git ca-certificates
 
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@00186d05c5dea8ab6b52aa2e3012398c3cc3d24b
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6b82f7e4f2de2f67b4f5e6
         with:
           gradle-version: wrapper
 
@@ -206,7 +208,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish GitHub pre-release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@da05d552573ad5ece0dc98dfdbf2d8a2073d3c74
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: "DVIDE ${{ steps.version.outputs.versionName }} (dev)"
@@ -240,15 +242,15 @@ jobs:
           apt-get install -y --no-install-recommends unzip curl git ca-certificates
 
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@00186d05c5dea8ab6b52aa2e3012398c3cc3d24b
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6b82f7e4f2de2f67b4f5e6
         with:
           gradle-version: wrapper
           cache-read-only: true
@@ -283,8 +285,6 @@ jobs:
           fi
           {
             echo "changelog<<CHANGELOG_EOF"
-            echo "Since \`${PREV_TAG:-repo start}\`:"
-            echo ""
             git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges | head -30
             echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
@@ -307,7 +307,7 @@ jobs:
 
       - name: Post sticky PR comment
         if: always()
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@52423e01640425a022ef5fd7c7bd1da36f8c7266
         with:
           header: pr-summary
           message: |
@@ -358,15 +358,15 @@ jobs:
           apt-get install -y --no-install-recommends unzip curl git ca-certificates
 
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@00186d05c5dea8ab6b52aa2e3012398c3cc3d24b
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6b82f7e4f2de2f67b4f5e6
         with:
           gradle-version: wrapper
 
@@ -480,7 +480,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@da05d552573ad5ece0dc98dfdbf2d8a2073d3c74
         with:
           tag_name: v${{ steps.version.outputs.versionName }}
           name: "DVIDE v${{ steps.version.outputs.versionName }}"
@@ -510,7 +510,7 @@ jobs:
 
       - name: Publish to Google Play (Internal Track)
         if: steps.play_console_check.outputs.configured == 'true'
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@8959b834a12e9d0c61d9c5dce63f6e2cfd80d7ae
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_CONSOLE_JSON }}
           packageName: com.knownassurajit.dvide_finance.app
@@ -523,3 +523,16 @@ jobs:
       - name: Remove keystore
         if: always()
         run: shred -u "$GITHUB_WORKSPACE/release.jks" 2>/dev/null || rm -f "$GITHUB_WORKSPACE/release.jks"
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/dependency-review-action@da3b6d89b7ff0e7b01db34e8fa88de4ec57b3fef
+        with:
+          fail-on-severity: high
