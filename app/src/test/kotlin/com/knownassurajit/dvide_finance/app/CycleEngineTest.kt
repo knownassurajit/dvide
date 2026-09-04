@@ -257,8 +257,70 @@ class CycleEngineTest {
         val past = CycleEngine.calculatePastCycles(listOf(cycle), transactions = txns, today = today)
         
         assertEquals(1, past.size)
+        assertEquals(0L, past[0].cycleId)
         assertEquals("June 2026", past[0].label)
         assertEquals("25 May – 24 Jun", past[0].range)
         assertEquals(3100.0, past[0].balance, 0.001)
+    }
+
+    @Test
+    fun `calculatePastCycles excludes the active cycle`() {
+        val today = LocalDate.of(2026, 6, 4)
+        val cycle = mc(LocalDate.of(2026, 5, 25), LocalDate.of(2026, 6, 24), 3200.0)
+        val past = CycleEngine.calculatePastCycles(listOf(cycle), emptyList(), today)
+        assertTrue(past.isEmpty())
+    }
+
+    @Test
+    fun `calculatePastCycles includes ended cycles without transactions`() {
+        val today = LocalDate.of(2026, 6, 28)
+        val cycle = mc(LocalDate.of(2026, 5, 25), LocalDate.of(2026, 6, 24), 3200.0)
+        val past = CycleEngine.calculatePastCycles(listOf(cycle), emptyList(), today)
+        assertEquals(1, past.size)
+        assertEquals(3200.0, past[0].balance, 0.001)
+    }
+
+    @Test
+    fun `windowForPayday uses previous payday when today is before this months payday`() {
+        val today = LocalDate.of(2026, 6, 4)
+        val (start, end) = CycleEngine.windowForPayday(25, today)
+        assertEquals(LocalDate.of(2026, 5, 25), start)
+        assertEquals(LocalDate.of(2026, 6, 24), end)
+    }
+
+    @Test
+    fun `windowForPayday starts today when today is payday`() {
+        val today = LocalDate.of(2026, 6, 25)
+        val (start, end) = CycleEngine.windowForPayday(25, today)
+        assertEquals(LocalDate.of(2026, 6, 25), start)
+        assertEquals(LocalDate.of(2026, 7, 24), end)
+    }
+
+    @Test
+    fun `windowForPayday clamps payday 31 in short months`() {
+        val today = LocalDate.of(2026, 3, 1)
+        val (start, end) = CycleEngine.windowForPayday(31, today)
+        assertEquals(LocalDate.of(2026, 2, 28), start)
+        assertEquals(LocalDate.of(2026, 3, 30), end)
+    }
+
+    @Test
+    fun `resolveCurrentCycle prefers the window covering today`() {
+        val today = LocalDate.of(2026, 6, 4)
+        val previous = mc(LocalDate.of(2026, 4, 25), LocalDate.of(2026, 5, 24), 3000.0)
+        val current = mc(LocalDate.of(2026, 5, 25), LocalDate.of(2026, 6, 24), 3200.0)
+        val next = mc(LocalDate.of(2026, 6, 25), LocalDate.of(2026, 7, 24), 3200.0)
+        val resolved = CycleEngine.resolveCurrentCycle(listOf(previous, current, next), today)
+        assertEquals(current.startDate, resolved?.startDate)
+    }
+
+    @Test
+    fun `buildExportCsv writes a header and a row per transaction`() {
+        val cycle = mc(LocalDate.of(2026, 5, 25), LocalDate.of(2026, 6, 24), 3200.0)
+        val txns = listOf(tx(LocalDate.of(2026, 6, 1), "lifestyle", "expense", 12.5))
+        val csv = CycleEngine.buildExportCsv(listOf(cycle), txns)
+        assertTrue(csv.startsWith("date,category,kind,amount,note,cycle"))
+        assertTrue(csv.contains("lifestyle"))
+        assertTrue(csv.contains("12.50"))
     }
 }

@@ -10,21 +10,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knownassurajit.dvide_finance.app.data.model.Category
 import com.knownassurajit.dvide_finance.app.ui.components.CategoryChip
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
 import com.knownassurajit.dvide_finance.app.ui.components.Keypad
+import com.knownassurajit.dvide_finance.app.ui.components.DatePickerField
+import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeCommitBtn
-import com.knownassurajit.dvide_finance.app.ui.theme.ShapePill
-import com.knownassurajit.dvide_finance.app.ui.theme.ShapeSheet
+import java.time.LocalDate
 import com.knownassurajit.dvide_finance.app.ui.theme.LocalCurrencyFormatter
 import com.knownassurajit.dvide_finance.app.ui.theme.dvideColors
 
@@ -33,6 +32,7 @@ data class NewTransaction(
     val category: String,
     val kind: String,
     val note: String,
+    val date: LocalDate = LocalDate.now(),
 )
 
 private val MODE_SPEND   = "spend"
@@ -50,6 +50,8 @@ private val ENTRY_NOTES = mapOf(
 fun AddTransactionSheet(
     onAdd: (NewTransaction) -> Unit,
     modifier: Modifier = Modifier,
+    cycleStart: LocalDate? = null,
+    cycleEnd: LocalDate? = null,
 ) {
     val haptic = LocalHapticFeedback.current
     val formatter = LocalCurrencyFormatter.current
@@ -66,6 +68,15 @@ fun AddTransactionSheet(
     var category by remember { mutableStateOf("essentials") }
     var customCat by remember { mutableStateOf("") }
     var note     by remember { mutableStateOf("") }
+    var entryDate by remember {
+        val today = LocalDate.now()
+        val initial = when {
+            cycleStart != null && today.isBefore(cycleStart) -> cycleStart
+            cycleEnd != null && today.isAfter(cycleEnd) -> cycleEnd
+            else -> today
+        }
+        mutableStateOf(initial)
+    }
 
     val activeCat = customCat.trim().ifEmpty { category }.lowercase()
     val isCustom  = customCat.trim().isNotEmpty()
@@ -114,6 +125,7 @@ fun AddTransactionSheet(
             category = activeCat,
             kind     = if (mode == MODE_ASIDE) "aside" else "expense",
             note     = finalNote,
+            date     = entryDate,
         ))
     }
 
@@ -121,42 +133,22 @@ fun AddTransactionSheet(
         modifier = modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 22.dp)
-            .padding(bottom = 22.dp),
+            .padding(horizontal = DvideDimens.screen)
+            .padding(bottom = DvideDimens.section),
     ) {
         // Mode toggle: Spend vs Set aside
-        Row(
+        SingleChoiceSegmentedButtonRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 12.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .padding(4.dp),
+                .padding(bottom = DvideDimens.item),
         ) {
-            Surface(
-                modifier       = Modifier.fillMaxWidth(),
-                shape          = RoundedCornerShape(16.dp),
-                color          = MaterialTheme.colorScheme.surfaceContainer,
-            ) {
-                Row(modifier = Modifier.padding(4.dp)) {
-                    listOf(MODE_SPEND to "Spend", MODE_ASIDE to "Set aside").forEach { (m, label) ->
-                        Surface(
-                            onClick = { switchMode(m) },
-                            modifier = Modifier.weight(1f),
-                            shape    = RoundedCornerShape(12.dp),
-                            color    = if (mode == m) MaterialTheme.colorScheme.surfaceContainerHighest
-                                       else Color.Transparent,
-                        ) {
-                            Text(
-                                text     = label,
-                                style    = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight(620)),
-                                color    = if (mode == m) MaterialTheme.colorScheme.onSurface
-                                           else          MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(11.dp),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            )
-                        }
-                    }
-                }
+            listOf(MODE_SPEND to "Spend", MODE_ASIDE to "Set aside").forEachIndexed { index, (m, label) ->
+                SegmentedButton(
+                    selected = mode == m,
+                    onClick = { switchMode(m) },
+                    shape = SegmentedButtonDefaults.itemShape(index, 2),
+                    label = { Text(label) },
+                )
             }
         }
 
@@ -184,6 +176,15 @@ fun AddTransactionSheet(
                 )
             }
         }
+
+        DatePickerField(
+            label = "Date",
+            date = entryDate,
+            onDateChange = { entryDate = it },
+            minDate = cycleStart,
+            maxDate = cycleEnd,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
 
         // Note input
         OutlinedTextField(
@@ -255,7 +256,7 @@ fun AddTransactionSheet(
         // Commit button
         Button(
             onClick  = ::commit,
-            modifier = Modifier.fillMaxWidth().height(58.dp),
+            modifier = Modifier.fillMaxWidth().height(DvideDimens.commit),
             shape    = ShapeCommitBtn,
             enabled  = valid,
             colors   = ButtonDefaults.buttonColors(

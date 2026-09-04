@@ -10,6 +10,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,9 +20,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.knownassurajit.dvide_finance.app.data.model.Category
+import com.knownassurajit.dvide_finance.app.data.model.ManualCycle
 import com.knownassurajit.dvide_finance.app.domain.model.Metrics
-import com.knownassurajit.dvide_finance.app.domain.model.PastCycle
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
+import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import com.knownassurajit.dvide_finance.app.ui.theme.LocalCurrencyFormatter
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeSettingsGroup
 import com.knownassurajit.dvide_finance.app.ui.theme.dvideColors
@@ -29,10 +33,13 @@ import com.knownassurajit.dvide_finance.app.util.ordinal
 @Composable
 fun CycleDetailScreen(
     metrics: Metrics?,
-    archive: List<PastCycle>,
+    cycle: ManualCycle?,
     onClose: () -> Unit,
+    onEdit: () -> Unit = {},
+    onDelete: () -> Unit = {},
 ) {
     val formatter = LocalCurrencyFormatter.current
+    var confirmDelete by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -40,12 +47,22 @@ fun CycleDetailScreen(
                 title = {
                     Text(
                         "Cycle metrics",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                        style = MaterialTheme.typography.titleLarge,
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
                         Icon(CwIcons.Back, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (cycle != null) {
+                        IconButton(onClick = onEdit) {
+                            Icon(CwIcons.Edit, contentDescription = "Edit cycle")
+                        }
+                        IconButton(onClick = { confirmDelete = true }) {
+                            Icon(CwIcons.Delete, contentDescription = "Delete cycle")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -54,6 +71,9 @@ fun CycleDetailScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.surface,
+        contentWindowInsets = WindowInsets.safeContent.only(
+            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+        ),
     ) { paddingValues ->
         if (metrics == null) {
             Column(
@@ -76,8 +96,8 @@ fun CycleDetailScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(32.dp),
+                    .padding(horizontal = DvideDimens.screen, vertical = DvideDimens.item),
+                verticalArrangement = Arrangement.spacedBy(DvideDimens.section),
             ) {
                 // ── Parameters ──
                 SettingsLabel("Parameters")
@@ -203,6 +223,25 @@ fun CycleDetailScreen(
             }
         }
     }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete this cycle?") },
+            text = { Text("Entries stay in the ledger. Only this pay window will be removed.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    onDelete()
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text("Cancel") }
+            },
+        )
+    }
 }
 
 // ── Shared sub-composables ──
@@ -212,7 +251,7 @@ fun SettingsLabel(text: String) {
         text  = text,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+        modifier = Modifier.padding(start = DvideDimens.list, bottom = DvideDimens.tight)
     )
 }
 
@@ -244,7 +283,7 @@ private fun CycleRow(
     Row(
         modifier          = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+            .padding(horizontal = DvideDimens.list, vertical = DvideDimens.list),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -284,7 +323,7 @@ private fun WaterfallRow(
     Column {
         if (rule) {
             HorizontalDivider(
-                modifier  = Modifier.padding(horizontal = 18.dp),
+                modifier  = Modifier.padding(horizontal = DvideDimens.list),
                 thickness = 1.5.dp,
                 color     = MaterialTheme.colorScheme.outlineVariant,
             )
@@ -292,7 +331,7 @@ private fun WaterfallRow(
         Row(
             modifier          = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 16.dp),
+                .padding(horizontal = DvideDimens.list, vertical = DvideDimens.list),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -348,7 +387,7 @@ private fun CategoryBreakdownRow(
     )
     val color = MaterialTheme.dvideColors.categoryColor(categoryKey)
 
-    Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp)) {
+    Column(modifier = Modifier.padding(horizontal = DvideDimens.list, vertical = DvideDimens.item)) {
         Row(
             modifier          = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,

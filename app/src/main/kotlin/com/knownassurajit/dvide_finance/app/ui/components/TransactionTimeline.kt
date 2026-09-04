@@ -4,7 +4,6 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -17,11 +16,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.knownassurajit.dvide_finance.app.data.model.Category
 import com.knownassurajit.dvide_finance.app.data.model.Transaction
 import com.knownassurajit.dvide_finance.app.domain.engine.CycleEngine
 import com.knownassurajit.dvide_finance.app.domain.model.Metrics
+import com.knownassurajit.dvide_finance.app.ui.theme.BottomClearance
+import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeTimelineRow
 import com.knownassurajit.dvide_finance.app.ui.theme.LocalCurrencyFormatter
 import com.knownassurajit.dvide_finance.app.ui.theme.dvideColors
@@ -46,26 +48,31 @@ fun TransactionTimeline(
 
     var transactionToDelete by remember { mutableStateOf<Transaction?>(null) }
 
-    Column(modifier = modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(DvideDimens.tight)) {
+        if (groups.isEmpty()) {
+            Text(
+                text = "No entries in this cycle yet.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = DvideDimens.item),
+            )
+        }
         groups.forEach { group ->
-            // Date divider
             Row(
                 modifier            = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 8.dp)
-                    .padding(top = 8.dp),
+                    .padding(top = DvideDimens.tight, bottom = DvideDimens.hairline),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment   = Alignment.CenterVertically,
             ) {
                 Text(
                     text       = group.label,
-                    style      = MaterialTheme.typography.labelMedium,
+                    style      = MaterialTheme.typography.labelLarge,
                     color      = MaterialTheme.colorScheme.onSurface,
-                    letterSpacing = androidx.compose.ui.unit.TextUnit(0.16f, androidx.compose.ui.unit.TextUnitType.Em),
                 )
                 Text(
                     text  = formatter.format(group.total, 2),
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -96,8 +103,8 @@ fun TransactionTimeline(
                                 onClick = {}
                             )
                             .padding(
-                                horizontal = 16.dp,
-                                vertical   = if (compact) 10.dp else 13.dp,
+                                horizontal = DvideDimens.screenTight,
+                                vertical   = if (compact) 10.dp else 12.dp,
                             ),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -117,13 +124,15 @@ fun TransactionTimeline(
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                             Text(
-                                text  = Category.labelOf(tx.category).uppercase() +
-                                        if (catKind == Category.Kind.ASIDE) " · SET ASIDE" else "",
+                                text  = Category.labelOf(tx.category) +
+                                        if (catKind == Category.Kind.ASIDE) " · set aside" else "",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                letterSpacing = androidx.compose.ui.unit.TextUnit(0.1f, androidx.compose.ui.unit.TextUnitType.Em),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
 
@@ -131,7 +140,7 @@ fun TransactionTimeline(
                         Text(
                             text  = if (catKind == Category.Kind.ASIDE) "↓ ${formatter.format(tx.amount, 2)}"
                                     else formatter.format(tx.amount, 2),
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                            style = MaterialTheme.typography.titleMedium,
                             color = if (catKind == Category.Kind.ASIDE)
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             else
@@ -142,32 +151,7 @@ fun TransactionTimeline(
             }
         }
 
-        if (onAddTransaction != null) {
-            Row(
-                 modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp)
-                            .clip(ShapeTimelineRow)
-                            .clickable { onAddTransaction() }
-                            .padding(vertical = 16.dp),
-                 horizontalArrangement = Arrangement.Center,
-                 verticalAlignment = Alignment.CenterVertically
-            ) {
-                 Icon(
-                    imageVector = CwIcons.Plus,
-                    contentDescription = "Add Transaction",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp).padding(end = 8.dp)
-                )
-                Text(
-                    text = "Add Entry",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(120.dp))
+        BottomClearance(fab = true)
     }
 
     if (transactionToDelete != null) {

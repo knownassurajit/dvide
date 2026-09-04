@@ -12,14 +12,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.knownassurajit.dvide_finance.app.domain.model.PastCycle
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
+import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import com.knownassurajit.dvide_finance.app.ui.theme.LocalCurrencyFormatter
-import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArchiveScreen(
     pastCycles: List<PastCycle>,
     onClose: () -> Unit,
+    onOpenCycle: (PastCycle) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val formatter = LocalCurrencyFormatter.current
@@ -30,7 +31,7 @@ fun ArchiveScreen(
                 title = {
                     Text(
                         text = "Archive",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                        style = MaterialTheme.typography.titleLarge,
                     )
                 },
                 navigationIcon = {
@@ -44,35 +45,45 @@ fun ArchiveScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.surface,
+        contentWindowInsets = WindowInsets.safeContent.only(
+            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+        ),
         modifier = modifier
     ) { paddingValues ->
         if (pastCycles.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                modifier = Modifier.fillMaxSize().padding(paddingValues).padding(32.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "No past cycles available.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "No closed cycles yet",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "When a pay window ends, it lands here with its closing balance.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                contentPadding = PaddingValues(horizontal = DvideDimens.screen, vertical = DvideDimens.item),
+                verticalArrangement = Arrangement.spacedBy(DvideDimens.item)
             ) {
                 items(pastCycles) { cycle ->
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceContainer,
                         shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.fillMaxWidth().clickable { /* TODO: Open cycle details */ }
+                        modifier = Modifier.fillMaxWidth().clickable { onOpenCycle(cycle) }
                     ) {
                          Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 18.dp, vertical = 16.dp),
+                                .padding(horizontal = DvideDimens.list, vertical = DvideDimens.list),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {

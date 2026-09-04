@@ -26,6 +26,7 @@ class MainActivity : ComponentActivity() {
             DvideTheme(
                 seedHue      = settings.seedHue,
                 darkTheme    = settings.darkTheme,
+                dynamicColor = settings.dynamicColor,
                 currencyCode = settings.currencyCode,
                 regionCode   = settings.regionCode,
                 weekStartDay = settings.weekStartDay,

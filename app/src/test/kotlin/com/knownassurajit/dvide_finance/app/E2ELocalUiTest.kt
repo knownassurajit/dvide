@@ -4,10 +4,11 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.knownassurajit.dvide_finance.app.data.repository.AppSettings
-import com.knownassurajit.dvide_finance.app.ui.settings.ProfileScreen
-import com.knownassurajit.dvide_finance.app.ui.settings.SettingsScreen
-import com.knownassurajit.dvide_finance.app.ui.settings.CurrencySelectDialog
+import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
+import com.knownassurajit.dvide_finance.app.ui.dashboard.DashboardScreen
 import com.knownassurajit.dvide_finance.app.ui.onboarding.OnboardingScreen
+import com.knownassurajit.dvide_finance.app.ui.settings.CurrencySelectDialog
+import com.knownassurajit.dvide_finance.app.ui.settings.ProfileScreen
 import com.knownassurajit.dvide_finance.app.ui.theme.DvideTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -105,7 +106,7 @@ class E2ELocalUiTest {
         composeTestRule.setContent {
             DvideTheme {
                 OnboardingScreen(
-                    onComplete = { name, email, _, _, _, _ ->
+                    onComplete = { name, email, _, _, _, _, _, _ ->
                         completed = true
                         savedName = name
                         savedEmail = email
@@ -122,12 +123,42 @@ class E2ELocalUiTest {
         composeTestRule.onNodeWithTag("onboard_next_button").performClick()
 
         // --- STEP 2: Localization Preferences ---
-        // Click Build workspace
+        composeTestRule.onNodeWithTag("onboard_next_button").performClick()
+        composeTestRule.waitForIdle()
+
+        // --- STEP 3: Pay cycle ---
+        composeTestRule.onNodeWithTag("onboard_income").performTextInput("3200")
+        composeTestRule.onNodeWithTag("onboard_next_button").assertIsEnabled()
         composeTestRule.onNodeWithTag("onboard_next_button").performClick()
 
         // Verify final callback matches user inputs
         assertTrue(completed)
         assertEquals("Bob", savedName)
         assertEquals("bob@dvide.app", savedEmail)
+    }
+
+    @Test
+    fun emptyDashboardRendersCreateCycleCtaWithoutCrashing() {
+        composeTestRule.setContent {
+            DvideTheme {
+                DashboardScreen(
+                    metrics = null,
+                    variant = DashboardVariant.EDITORIAL,
+                    viewIsWeekly = false,
+                    onViewChange = {},
+                    userName = "Sam",
+                    highlightId = null,
+                    onOpenSettings = {},
+                    onOpenCycle = {},
+                    onOpenProfile = {},
+                    onDeleteTransaction = {},
+                    onAddCycle = {},
+                    onAddTransaction = {},
+                    onOpenArchive = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("empty_create_cycle").assertExists()
+        composeTestRule.onNodeWithText("Start your first cycle").assertExists()
     }
 }

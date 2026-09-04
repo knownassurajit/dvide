@@ -70,3 +70,8 @@ ehthumbs.db
 .env
 .env.local
 secrets.properties
+
+# ECC / Cursor local logs
+.cursor/*.log
+.cursor/ecc-install-state.json
+.ecc/
