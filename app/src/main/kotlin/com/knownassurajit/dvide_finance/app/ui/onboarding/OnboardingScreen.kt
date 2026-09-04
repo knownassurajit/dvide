@@ -282,6 +282,7 @@ fun OnboardingScreen(
                                     onPaydayChange = { payday = it },
                                     incomeInput = incomeInput,
                                     onIncomeChange = { incomeInput = it },
+                                    weekStartDay = weekStartDay,
                                 )
                             }
                         }

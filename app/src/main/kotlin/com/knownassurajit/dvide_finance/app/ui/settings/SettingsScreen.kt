@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -32,8 +31,19 @@ import com.knownassurajit.dvide_finance.app.data.repository.AppSettings
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
 import com.knownassurajit.dvide_finance.app.ui.components.HueSlider
+import com.knownassurajit.dvide_finance.app.ui.components.PaydayCalendar
 import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeSettingsGroup
+
+private object SettingsSpace {
+    val section = 32.dp
+    val screenVertical = 20.dp
+    val rowH = 16.dp
+    val rowV = 16.dp
+    val switchV = 12.dp
+    val groupTitleBottom = 12.dp
+    val inner = 12.dp
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -86,11 +96,11 @@ fun SettingsScreen(
     ) { paddingValues ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = DvideDimens.screen, vertical = DvideDimens.item),
-            verticalArrangement = Arrangement.spacedBy(DvideDimens.section),
+                .padding(horizontal = DvideDimens.screenTight, vertical = SettingsSpace.screenVertical),
+            verticalArrangement = Arrangement.spacedBy(SettingsSpace.section),
         ) {
             // Personal & Profile
             SettingsSection(title = "Profile") {
@@ -114,7 +124,7 @@ fun SettingsScreen(
                     onCheckedChange = onDynamicColorChange,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-                Column(modifier = Modifier.padding(DvideDimens.list)) {
+                Column(modifier = Modifier.padding(SettingsSpace.inner)) {
                     Text(
                         text = "Dashboard layout",
                         style = MaterialTheme.typography.bodyLarge,
@@ -136,13 +146,13 @@ fun SettingsScreen(
                 }
                 if (!settings.dynamicColor) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-                    Column(modifier = Modifier.padding(DvideDimens.list)) {
+                    Column(modifier = Modifier.padding(SettingsSpace.inner)) {
                         Text(
                             text = "Brand colour",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(SettingsSpace.rowV))
                         HueSlider(
                             hue = settings.seedHue,
                             onHueChange = { onSeedHueChange(it.toInt()) },
@@ -152,7 +162,10 @@ fun SettingsScreen(
             }
 
             SettingsSection(title = "Pay cycle") {
-                Column(modifier = Modifier.padding(horizontal = DvideDimens.list, vertical = DvideDimens.list)) {
+                Column(
+                    modifier = Modifier.padding(SettingsSpace.inner),
+                    verticalArrangement = Arrangement.spacedBy(SettingsSpace.rowV),
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -168,14 +181,13 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Slider(
-                        value = settings.payday.coerceIn(1, 31).toFloat(),
-                        onValueChange = { onPaydayChange(it.toInt().coerceIn(1, 31)) },
-                        valueRange = 1f..31f,
-                        steps = 29,
+                    PaydayCalendar(
+                        payday = settings.payday,
+                        onPaydayChange = onPaydayChange,
+                        weekStartDay = settings.weekStartDay,
                     )
                     Text(
-                        text = "Used when suggesting the next cycle window.",
+                        text = "Used when suggesting the next cycle window. Days 29–31 stay available for longer months.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -246,7 +258,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(start = 16.dp),
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 
@@ -287,7 +299,7 @@ fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) 
             text  = title,
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = DvideDimens.list, bottom = DvideDimens.tight)
+            modifier = Modifier.padding(start = SettingsSpace.rowH, bottom = SettingsSpace.groupTitleBottom)
         )
         Surface(
             shape = ShapeSettingsGroup,
@@ -311,7 +323,7 @@ fun SettingsRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(horizontal = DvideDimens.list, vertical = DvideDimens.list),
+            .padding(horizontal = SettingsSpace.rowH, vertical = SettingsSpace.rowV),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment     = Alignment.CenterVertically,
     ) {
@@ -348,7 +360,7 @@ fun SettingsSwitchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = DvideDimens.list, vertical = DvideDimens.tight),
+            .padding(horizontal = SettingsSpace.rowH, vertical = SettingsSpace.switchV),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment     = Alignment.CenterVertically,
     ) {

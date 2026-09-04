@@ -12,9 +12,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -26,8 +26,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.knownassurajit.dvide_finance.app.data.model.ManualCycle
+import com.knownassurajit.dvide_finance.app.debug.AgentDebugLog
 import com.knownassurajit.dvide_finance.app.domain.engine.CycleEngine
-import com.knownassurajit.dvide_finance.app.ui.components.DatePickerField
+import com.knownassurajit.dvide_finance.app.ui.components.CycleRangeCalendar
+import com.knownassurajit.dvide_finance.app.ui.components.PaydayCalendar
 import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import com.knownassurajit.dvide_finance.app.ui.theme.LocalCurrencyFormatter
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeCommitBtn
@@ -42,6 +44,7 @@ fun AddCycleSheet(
     modifier: Modifier = Modifier,
     editing: ManualCycle? = null,
     payday: Int = 25,
+    weekStartDay: Int = java.util.Calendar.MONDAY,
 ) {
     val formatter = LocalCurrencyFormatter.current
     val suggested = remember(existingCycles, payday, editing) {
@@ -73,6 +76,23 @@ fun AddCycleSheet(
     val isIncomeValid = parsedIncome > 0
     val isEditing = editing != null
 
+    // #region agent log
+    LaunchedEffect(startDate, endDate) {
+        AgentDebugLog.log(
+            location = "AddCycleSheet.kt:range",
+            message = "cycle sheet range",
+            hypothesisId = "C",
+            data = mapOf(
+                "start" to (startDate?.toString() ?: ""),
+                "end" to (endDate?.toString() ?: ""),
+                "valid" to isDateValid,
+                "overlap" to hasOverlap,
+                "weekStartDay" to weekStartDay,
+            ),
+        )
+    }
+    // #endregion
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -90,20 +110,19 @@ fun AddCycleSheet(
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            text = "Pay window for this salary cycle. Defaults follow payday $payday.",
+                            text = "Tap a start date, then an end date. Defaults follow payday $payday.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        DatePickerField(
-                            label = "Start",
-                            date = startDate,
-                            onDateChange = { startDate = it },
-                        )
-                        DatePickerField(
-                            label = "End",
-                            date = endDate,
-                            onDateChange = { endDate = it },
-                            minDate = startDate,
+                        CycleRangeCalendar(
+                            start = startDate,
+                            end = endDate,
+                            onRangeChange = { start, end ->
+                                startDate = start
+                                endDate = end
+                            },
+                            weekStartDay = weekStartDay,
+                            modifier = Modifier.testTag("cycle_range_calendar"),
                         )
                         if (dateError != null) {
                             Text(
@@ -208,6 +227,7 @@ fun PaydayIncomeForm(
     incomeInput: String,
     onIncomeChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    weekStartDay: Int = java.util.Calendar.MONDAY,
 ) {
     val formatter = LocalCurrencyFormatter.current
     val window = remember(payday) { CycleEngine.windowForPayday(payday, LocalDate.now()) }
@@ -236,14 +256,10 @@ fun PaydayIncomeForm(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Slider(
-            value = payday.coerceIn(1, 31).toFloat(),
-            onValueChange = { onPaydayChange(it.toInt().coerceIn(1, 31)) },
-            valueRange = 1f..31f,
-            steps = 29,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("onboard_payday_slider"),
+        PaydayCalendar(
+            payday = payday,
+            onPaydayChange = onPaydayChange,
+            weekStartDay = weekStartDay,
         )
         OutlinedTextField(
             value = incomeInput,

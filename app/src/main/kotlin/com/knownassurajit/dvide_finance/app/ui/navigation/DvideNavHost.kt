@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -312,6 +314,7 @@ fun DvideNavHost(
                 existingCycles = allCycles,
                 editing = editingCycle,
                 payday = settings.payday,
+                weekStartDay = settings.weekStartDay,
                 onAdd = { cycle ->
                     if (editingCycle != null) viewModel.updateCycle(cycle)
                     else viewModel.addCycle(cycle)
