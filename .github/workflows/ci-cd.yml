@@ -77,7 +77,7 @@ jobs:
 
       - name: Upload JUnit XML results
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: unit-test-results
           path: app/build/test-results/testDebugUnitTest/
@@ -85,7 +85,7 @@ jobs:
 
       - name: Upload HTML test report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: unit-test-report
           path: app/build/reports/tests/testDebugUnitTest/
@@ -93,7 +93,7 @@ jobs:
 
       - name: Upload lint HTML report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: lint-report
           path: app/build/reports/lint-results-debug.html
@@ -101,7 +101,7 @@ jobs:
 
       - name: Upload lint XML results
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: lint-results-xml
           path: app/build/reports/lint-results-debug.xml
