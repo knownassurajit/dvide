@@ -15,7 +15,7 @@ material3               = "1.4.0"
 coroutines              = "1.10.2"
 junit                   = "4.13.2"
 junitExt                = "1.2.1"
-espresso                = "3.6.1"
+espresso                = "3.7.0"
 
 [libraries]
 # AndroidX core
