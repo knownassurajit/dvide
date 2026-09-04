@@ -1,6 +1,6 @@
 # Cyclewise — Manual Finance
 
-[![CI / CD](https://github.com/justachillgirl/dvide/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/justachillgirl/dvide/actions/workflows/ci.yml)
+[![CI / CD](https://github.com/knownassurajit/dvide/actions/workflows/ci-cd.yml/badge.svg?branch=master)](https://github.com/knownassurajit/dvide/actions/workflows/ci-cd.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Min SDK](https://img.shields.io/badge/minSdk-26-green)
 ![Target SDK](https://img.shields.io/badge/targetSdk-35-blue)
@@ -47,7 +47,7 @@ Three dashboard layouts surface this engine — pick the one that clicks.
 | Preferences | DataStore Preferences |
 | Navigation | Navigation Compose 2.8 |
 | Build | Gradle 8.10.2 · KSP · version catalog |
-| CI/CD | GitHub Actions (5-stage pipeline) |
+| CI/CD | GitHub Actions, containerized (develop → master pipeline) |
 | Min SDK | API 26 (Android 8.0) |
 | Target SDK | API 35 (Android 15) |
 
@@ -240,7 +240,7 @@ ShapeGaugeCardSharp = RoundedCornerShape(16)
 
 ```bash
 ./gradlew :app:assembleDebug
-# Local builds produce app-debug.apk; the CI pipeline renames it to cyclewise-debug.apk
+# Local builds produce app-debug.apk; the CI pipeline renames it to dvide-debug.apk
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -262,56 +262,76 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 ## CI / CD Pipeline
 
-Defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+Defined in a single consolidated workflow:
+[`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml).
+
+### Branch model
+
+```
+feature/* ──PR──► develop ──PR──► master
+                    │                │
+              debug pre-release  stable release
+              (GitHub + APK)     (GitHub Release + Play Console)
+```
+
+- **`develop`** is the integration branch. Every push runs the full test
+  suite and cuts a debug APK pre-release for testers.
+- **`master`** is the production branch. Every push runs tests again, then
+  builds, signs, and ships a stable release — to GitHub Releases and,
+  when configured, the Play Console internal track.
+- Feature work branches off `develop` and merges back via PR; PRs into
+  `master` get an automated summary comment before merge.
 
 ### Pipeline diagram
 
 ```
-push / PR to master
+push to develop/master, or PR into master
         │
-   ①  Compile ──────────────────────────────────── fail fast
+   Test & Lint ──────────────────────────────── containerized, fail fast
+   (compile → testDebugUnitTest → lintDebug)
         │
-   ②  Unit Tests ◄──────────────────────── parallel
-   ③  Lint       ◄──────────────────────── parallel
+        ├── push to develop ──► Debug Pre-release ──► GitHub pre-release (APK)
         │
-       both pass
+        ├── PR into master ───► PR Summary ──────────► step summary + sticky PR comment
         │
-   ─── on push to master ─── ④ Debug APK ────── artifact (7 days)
-        │
-   ─── on tag v*.*.* ──────── ⑤ Release ─────── GitHub Release
-                                  ├── cyclewise-release.apk
-                                  └── cyclewise-release.aab
+        └── push to master ───► Stable Release ──────► GitHub Release + Play Console
+                                    ├── dvide-release.apk
+                                    └── dvide-release.aab
 ```
 
 ### Job summary
 
-| # | Job | Trigger | Steps |
-|---|-----|---------|-------|
-| ① | Compile | PR + push | Checkout → JDK → wrapper validation → `compileDebugKotlin` |
-| ② | Unit Tests | after ① | `testDebugUnitTest` → upload JUnit XML + HTML → annotate PR |
-| ③ | Lint | after ① | `lintDebug` → upload HTML + XML |
-| ④ | Debug APK | push to master | `assembleDebug` → rename → upload artefact |
-| ⑤ | Release | tag `v*.*.*` | decode keystore → `bundleRelease` → `assembleRelease` → verify sig → changelog → GitHub Release |
+| Job | Trigger | Steps |
+|-----|---------|-------|
+| `test` | push to `develop`/`master`, all PRs into `master` | `compileDebugKotlin` → `testDebugUnitTest` → `lintDebug`, all inside `eclipse-temurin:17-jdk-jammy` |
+| `debug-release` | push to `develop` (needs `test`) | `assembleDebug` → rename → changelog → GitHub pre-release |
+| `pr-summary` | PR into `master` | re-runs tests + lint → step summary + sticky PR comment with a changelog preview since the last stable release |
+| `stable-release` | push to `master` (needs `test`) | dedicated `release/dvide/$version` branch → signed `assembleRelease`/`bundleRelease` → GitHub Release → Play Console internal track (if configured) |
 
-### Release workflow (tag-triggered)
+All jobs run in a `eclipse-temurin:17-jdk-jammy` container; each job installs
+`unzip`/`curl`/`git` via `apt-get` before setting up the Android SDK, since the
+base image ships neither.
 
-1. Push a version tag to master:
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-   > The tag must match `v[0-9]+.[0-9]+.[0-9]+` exactly — only this pattern
-   > triggers the release job.
-2. The **Release** job automatically:
-   - Extracts the version from the tag and computes a workflow-side
-     `versionCode` as `major×10000 + minor×100 + patch` (`1.0.0` → `10000`),
-     passing both as project properties *(see the versioning caveat above)*
-   - Decodes the keystore from `RELEASE_KEYSTORE_B64`
-   - Builds and signs the AAB (`bundleRelease`) and APK (`assembleRelease`)
-   - Verifies the APK signature with `apksigner`
-   - Generates a changelog from `git log` since the previous tag
-   - Creates a GitHub Release with the APK + AAB attached
-   - Shreds the keystore from the runner
+### Release workflow (push-to-master)
+
+`stable-release` is the **only** release path — the previous tag-triggered
+release job was merged into this one so a single commit can never produce two
+GitHub Releases. Pushing to `master`:
+1. Computes the version from the `major`/`minor`/`patch`/`build` constants in
+   [`app/build.gradle.kts`](app/build.gradle.kts) and passes them as
+   `-PversionName`/`-PversionCode` project properties.
+2. Creates (or reuses) a dedicated `release/dvide/$version` branch for
+   rollback tracking.
+3. Decodes the keystore from `RELEASE_KEYSTORE_B64` and builds
+   `assembleRelease`/`bundleRelease` — signed via the Gradle
+   `signingConfigs["release"]` block (see Signing below); this is now the
+   **only** signing mechanism (the old `-Pandroid.injected.signing.*`
+   property approach was removed to avoid two competing signing paths).
+4. Generates a changelog from `git log` since the previous tag.
+5. Publishes a GitHub Release with the APK + AAB attached.
+6. Uploads the AAB to the Play Console internal track, only when
+   `PLAY_CONSOLE_JSON` is set.
+7. Shreds the keystore from the runner.
 
 ### Required GitHub Secrets
 
@@ -320,9 +340,17 @@ Set these in **Settings → Secrets and variables → Actions**:
 | Secret | Description |
 |--------|-------------|
 | `RELEASE_KEYSTORE_B64` | Base64-encoded `.jks` keystore file (`base64 -w0 release.jks`) |
+| `STORE_FILE` | *(injected by CI, not a secret)* path to the decoded keystore |
+| `STORE_PASSWORD` | Keystore password |
 | `KEY_ALIAS` | Key alias inside the keystore |
 | `KEY_PASSWORD` | Private key password |
-| `STORE_PASSWORD` | Keystore password |
+| `PLAY_CONSOLE_JSON` | *(optional)* Play Console service-account JSON — Play upload is skipped when unset |
+
+`STORE_FILE`/`STORE_PASSWORD`/`KEY_ALIAS`/`KEY_PASSWORD` are read directly by
+`signingConfigs["release"]` in `app/build.gradle.kts` via `System.getenv(...)`,
+mirroring the pattern used by the other `knownassurajit` Android apps
+(clndr, void). If the keystore file isn't present at build time, the
+`release` build type simply skips the signing config rather than failing.
 
 ---
 
@@ -334,25 +362,26 @@ Set these in **Settings → Secrets and variables → Actions**:
 | Min SDK | 26 (Android 8.0 Oreo) |
 | Target SDK | 35 (Android 15) |
 | Compile SDK | 35 |
-| Version name | `0.0.0.2` (four-part `major.minor.patch.build`) |
-| Version code | `major×1_000_000 + minor×10_000 + patch×100 + build` |
+| Version name | `0.0.0.1` (four-part `major.minor.patch.build`), overridable via `-PversionName` |
+| Version code | `major×1_000_000 + minor×10_000 + patch×100 + build`, overridable via `-PversionCode` |
 | Build tools | AGP 8.7.3 / Kotlin 2.1.0 / KSP 2.1.0-1.0.29 |
 
-> **Versioning:** `versionName` / `versionCode` are currently derived from
-> hardcoded `major`/`minor`/`patch`/`build` constants in
-> [`app/build.gradle.kts`](app/build.gradle.kts). The release job *extracts* a
-> version from the git tag and passes `-PversionName` / `-PversionCode`, but the
-> build script does not yet read those project properties — wire them in if you
-> want tag-driven versioning to take effect.
+`versionName`/`versionCode` in `app/build.gradle.kts` now read the
+`-PversionName`/`-PversionCode` project properties CI passes in, falling back
+to the deterministic `major.minor.patch.build` formula when they aren't
+supplied (e.g. for local builds).
 
 ---
 
 ## Contributing
 
-1. Fork and create a branch: `git checkout -b feat/your-feature`
+1. Branch off `develop`: `git checkout -b feat/your-feature develop`
 2. Write or update tests alongside your changes
-3. Open a PR to `master` — the **① Compile → ② Tests + ③ Lint** pipeline runs automatically
-4. Squash-merge once green
+3. Open a PR to `develop` — the **Test & Lint** job runs automatically
+4. Squash-merge once green; pushes to `develop` cut a debug pre-release
+5. Periodically, `develop` is merged into `master` via a PR — the **PR Summary**
+   job posts test/lint results and a changelog preview, and the push to
+   `master` afterwards triggers the signed **Stable Release**
 
 ---
 

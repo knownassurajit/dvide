@@ -20,6 +20,7 @@ data class Metrics(
     val ended: Boolean,
     val surplus: Double,
     val borrowed: Double,
+    val sourceCycleId: Long = 0,
 ) {
     val balanceFraction: Float
         get() = if (spendable > 0) (balance / spendable).toFloat().coerceIn(0f, 1f) else 0f

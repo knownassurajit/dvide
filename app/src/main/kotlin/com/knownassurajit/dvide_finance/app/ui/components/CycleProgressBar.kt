@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.knownassurajit.dvide_finance.app.domain.model.Cycle
 import com.knownassurajit.dvide_finance.app.ui.theme.dvideColors
@@ -56,13 +57,15 @@ fun CycleProgressBar(
             verticalAlignment   = Alignment.CenterVertically,
         ) {
             Text(
-                text  = "CYCLE · ${cycle.label()}",
+                text  = cycle.label(),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = androidx.compose.ui.unit.TextUnit(0.08f, androidx.compose.ui.unit.TextUnitType.Em),
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text  = "${cycle.remaining} DAYS LEFT",
+                text  = "${cycle.remaining} days left",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -1,31 +1,41 @@
 package com.knownassurajit.dvide_finance.app.ui.settings
 
 import androidx.compose.animation.*
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeContent
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.knownassurajit.dvide_finance.app.data.repository.AppSettings
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
 import com.knownassurajit.dvide_finance.app.ui.components.HueSlider
+import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeSettingsGroup
-import com.knownassurajit.dvide_finance.app.util.formatMoney
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
@@ -38,6 +48,10 @@ fun SettingsScreen(
     onRegionChange: (String) -> Unit,
     onWeekStartChange: (Int) -> Unit,
     onNumberFormatChange: (String) -> Unit,
+    onDarkThemeChange: (Boolean) -> Unit = { onToggleTheme() },
+    onDynamicColorChange: (Boolean) -> Unit = {},
+    onPaydayChange: (Int) -> Unit = {},
+    onExport: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showCurrencyDialog by remember { mutableStateOf(false) }
@@ -51,7 +65,7 @@ fun SettingsScreen(
                 title = {
                     Text(
                         text  = "Settings",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                        style = MaterialTheme.typography.titleLarge,
                     )
                 },
                 navigationIcon = {
@@ -65,6 +79,9 @@ fun SettingsScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.surface,
+        contentWindowInsets = WindowInsets.safeContent.only(
+            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+        ),
         modifier       = modifier,
     ) { paddingValues ->
         Column(
@@ -72,8 +89,8 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(32.dp),
+                .padding(horizontal = DvideDimens.screen, vertical = DvideDimens.item),
+            verticalArrangement = Arrangement.spacedBy(DvideDimens.section),
         ) {
             // Personal & Profile
             SettingsSection(title = "Profile") {
@@ -84,33 +101,83 @@ fun SettingsScreen(
                 )
             }
 
-            // Appearance & Dashboard
             SettingsSection(title = "Appearance") {
-                SettingsRow(
-                    label = "Dark Mode",
-                    value = if (settings.darkTheme) "On" else "Off",
-                    onClick = onToggleTheme,
+                SettingsSwitchRow(
+                    label = "Dark theme",
+                    checked = settings.darkTheme,
+                    onCheckedChange = onDarkThemeChange,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-                SettingsRow(
-                    label = "Dashboard Layout",
-                    value = settings.dashboardVariant.name.lowercase().replaceFirstChar { it.uppercase() },
-                    onClick = {
-                        val next = DashboardVariant.entries[(settings.dashboardVariant.ordinal + 1) % DashboardVariant.entries.size]
-                        onVariantChange(next)
-                    },
+                SettingsSwitchRow(
+                    label = "Material You",
+                    checked = settings.dynamicColor,
+                    onCheckedChange = onDynamicColorChange,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-                Column(modifier = Modifier.padding(18.dp)) {
+                Column(modifier = Modifier.padding(DvideDimens.list)) {
                     Text(
-                        text = "Brand Color Seed",
+                        text = "Dashboard layout",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HueSlider(
-                        hue = settings.seedHue,
-                        onHueChange = { onSeedHueChange(it.toInt()) },
+                    Spacer(modifier = Modifier.height(DvideDimens.item))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(DvideDimens.tight),
+                        verticalArrangement = Arrangement.spacedBy(DvideDimens.tight),
+                    ) {
+                        DashboardVariant.entries.forEach { variant ->
+                            FilterChip(
+                                selected = settings.dashboardVariant == variant,
+                                onClick = { onVariantChange(variant) },
+                                label = { Text(variant.label) },
+                            )
+                        }
+                    }
+                }
+                if (!settings.dynamicColor) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                    Column(modifier = Modifier.padding(DvideDimens.list)) {
+                        Text(
+                            text = "Brand colour",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HueSlider(
+                            hue = settings.seedHue,
+                            onHueChange = { onSeedHueChange(it.toInt()) },
+                        )
+                    }
+                }
+            }
+
+            SettingsSection(title = "Pay cycle") {
+                Column(modifier = Modifier.padding(horizontal = DvideDimens.list, vertical = DvideDimens.list)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = "Payday",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = "Day ${settings.payday}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Slider(
+                        value = settings.payday.coerceIn(1, 31).toFloat(),
+                        onValueChange = { onPaydayChange(it.toInt().coerceIn(1, 31)) },
+                        valueRange = 1f..31f,
+                        steps = 29,
+                    )
+                    Text(
+                        text = "Used when suggesting the next cycle window.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -164,6 +231,21 @@ fun SettingsScreen(
                 )
             }
 
+            SettingsSection(title = "Data") {
+                SettingsRow(
+                    label = "Export ledger",
+                    value = "CSV",
+                    onClick = onExport,
+                )
+            }
+
+            Text(
+                text = "dv/de · divide each cycle",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 16.dp),
+            )
+
             Spacer(modifier = Modifier.height(48.dp))
         }
     }
@@ -205,7 +287,7 @@ fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) 
             text  = title,
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+            modifier = Modifier.padding(start = DvideDimens.list, bottom = DvideDimens.tight)
         )
         Surface(
             shape = ShapeSettingsGroup,
@@ -229,7 +311,7 @@ fun SettingsRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(horizontal = 18.dp, vertical = 18.dp),
+            .padding(horizontal = DvideDimens.list, vertical = DvideDimens.list),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment     = Alignment.CenterVertically,
     ) {
@@ -254,6 +336,32 @@ fun SettingsRow(
                 modifier = Modifier.size(16.dp)
             )
         }
+    }
+}
+
+@Composable
+fun SettingsSwitchRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = DvideDimens.list, vertical = DvideDimens.tight),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment     = Alignment.CenterVertically,
+    ) {
+        Text(
+            text  = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
     }
 }
 

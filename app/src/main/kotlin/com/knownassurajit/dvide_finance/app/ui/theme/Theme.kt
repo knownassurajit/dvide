@@ -1,11 +1,19 @@
 package com.knownassurajit.dvide_finance.app.ui.theme
 
+import android.app.Activity
+import android.os.Build
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import com.knownassurajit.dvide_finance.app.data.model.Category
 import com.knownassurajit.dvide_finance.app.util.formatMoney
 import com.knownassurajit.dvide_finance.app.util.moneyParts
@@ -59,13 +67,19 @@ val LocalCurrencyFormatter = staticCompositionLocalOf<CurrencyFormatter> {
 fun DvideTheme(
     seedHue: Int   = 300,
     darkTheme: Boolean = true,
+    dynamicColor: Boolean = false,
     currencyCode: String = "GBP",
     regionCode: String = "GB",
     weekStartDay: Int = 2,
     numberFormat: String = "DEFAULT",
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = colorSchemeForHue(seedHue, darkTheme)
+    val context = LocalContext.current
+    val colorScheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        else -> colorSchemeForHue(seedHue, darkTheme)
+    }
 
     val extraColors = DvideExtraColors(
         status           = colorScheme.error,
@@ -76,6 +90,16 @@ fun DvideTheme(
     )
 
     val formatter = CurrencyFormatter(currencyCode, regionCode, weekStartDay, numberFormat)
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            val controller = WindowCompat.getInsetsController(window, view)
+            controller.isAppearanceLightStatusBars = !darkTheme
+            controller.isAppearanceLightNavigationBars = !darkTheme
+        }
+    }
 
     CompositionLocalProvider(
         LocalDvideColors provides extraColors,

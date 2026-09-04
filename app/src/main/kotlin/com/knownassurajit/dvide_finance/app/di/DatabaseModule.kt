@@ -23,7 +23,7 @@ object DatabaseModule {
             context,
             DvideDatabase::class.java,
             DvideDatabase.DATABASE_NAME,
-        ).fallbackToDestructiveMigration().build()
+        ).fallbackToDestructiveMigration(dropAllTables = true).build()
 
     @Provides
     fun provideTransactionDao(db: DvideDatabase): TransactionDao = db.transactionDao()

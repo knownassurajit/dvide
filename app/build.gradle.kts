@@ -15,14 +15,18 @@ android {
         minSdk = 26
         targetSdk = 35
 
-        // Deterministic versioning formula
+        // Deterministic versioning formula (fallback when CI doesn't pass
+        // -PversionName / -PversionCode project properties)
         val major = 0
         val minor = 0
         val patch = 0
         val build = 1
 
-        versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build
-        versionName = "$major.$minor.$patch.$build"
+        val defaultVersionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build
+        val defaultVersionName = "$major.$minor.$patch.$build"
+
+        versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: defaultVersionCode
+        versionName = project.findProperty("versionName") as String? ?: defaultVersionName
 
         resourceConfigurations += listOf("en", "ar", "de", "es-rES", "es-rUS", "fr", "he", "hr", "hu", "in", "it", "ja", "nl", "pl", "pt-rBR", "ru-rRU", "sv", "tr", "uk", "zh")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -30,6 +34,22 @@ android {
         // Room schema export for migrations
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            val storeFilePath = System.getenv("STORE_FILE")
+            val storePasswordEnv = System.getenv("STORE_PASSWORD")
+            val keyAliasEnv = System.getenv("KEY_ALIAS")
+            val keyPasswordEnv = System.getenv("KEY_PASSWORD")
+
+            if (!storeFilePath.isNullOrEmpty() && file(storeFilePath).exists()) {
+                storeFile = file(storeFilePath)
+                storePassword = storePasswordEnv
+                keyAlias = keyAliasEnv
+                keyPassword = keyPasswordEnv
+            }
         }
     }
 
@@ -41,6 +61,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val storeFilePath = System.getenv("STORE_FILE")
+            if (!storeFilePath.isNullOrEmpty() && file(storeFilePath).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         debug {
             isMinifyEnabled  = false
@@ -59,7 +83,8 @@ android {
         freeCompilerArgs += listOf(
             "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
             "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
-            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi"
+            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+            "-opt-in=androidx.compose.ui.text.ExperimentalTextApi"
         )
     }
 

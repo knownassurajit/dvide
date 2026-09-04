@@ -20,4 +20,9 @@ object CwIcons {
     val Export: ImageVector      = Icons.Rounded.Download
     val Person: ImageVector      = Icons.Rounded.Person
     val History: ImageVector     = Icons.Rounded.History
+    val Calendar: ImageVector    = Icons.Rounded.CalendarMonth
+    val Delete: ImageVector      = Icons.Rounded.Delete
+    val Edit: ImageVector        = Icons.Rounded.Edit
+    val Wallet: ImageVector      = Icons.Rounded.AccountBalanceWallet
+    val Palette: ImageVector     = Icons.Rounded.Palette
 }

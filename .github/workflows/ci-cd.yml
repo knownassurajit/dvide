@@ -1,0 +1,538 @@
+name: CI / CD
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Triggers
+# ──────────────────────────────────────────────────────────────────────────────
+# develop -> master pipeline:
+#   - push to develop / master and every PR into master run the test job
+#   - push to develop additionally cuts a debug pre-release
+#   - PRs into master get a detailed summary + sticky PR comment
+#   - push to master is the SINGLE release trigger (no separate tag trigger,
+#     avoids double-firing GitHub Releases for the same commit)
+on:
+  push:
+    branches: [ develop, master ]
+  pull_request:
+    branches: [ develop, master ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Global environment
+# ──────────────────────────────────────────────────────────────────────────────
+env:
+  JAVA_VERSION:   '17'
+  JAVA_DISTRO:    temurin
+  APK_DEBUG:      dvide-debug.apk
+  APK_RELEASE:    dvide-release.apk
+  AAB_RELEASE:    dvide-release.aab
+
+permissions: read-all
+
+jobs:
+
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │  1 · TEST                                                                │
+  # │  Compile → unit tests → lint. Runs on every push to develop/master and  │
+  # │  every PR into master. Fully containerized.                             │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    container:
+      image: eclipse-temurin:17-jdk-jammy
+    timeout-minutes: 30
+
+    steps:
+      - name: Install container prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends unzip curl git ca-certificates
+
+      - name: Checkout source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+
+      - name: Validate Gradle wrapper integrity
+        uses: gradle/actions/wrapper-validation@ac638b010cf58a27ee6c972d7336334ccaf61c96
+
+      - name: Set up Gradle (cache + build-scan)
+        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96
+        with:
+          gradle-version: wrapper
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Compile debug sources (no tests)
+        run: ./gradlew :app:compileDebugKotlin --stacktrace
+
+      - name: Run debug unit tests
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
+      - name: Run Android lint (debug variant)
+        run: ./gradlew :app:lintDebug --stacktrace
+
+      - name: Upload JUnit XML results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: unit-test-results
+          path: app/build/test-results/testDebugUnitTest/
+          retention-days: 14
+
+      - name: Upload HTML test report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: unit-test-report
+          path: app/build/reports/tests/testDebugUnitTest/
+          retention-days: 14
+
+      - name: Upload lint HTML report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.html
+          retention-days: 14
+
+      - name: Upload lint XML results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: lint-results-xml
+          path: app/build/reports/lint-results-debug.xml
+          retention-days: 7
+
+      - name: Annotate PR with test failures
+        if: failure() && github.event_name == 'pull_request'
+        uses: mikepenz/action-junit-report@3585e9575db828022551b4231f165eb59a0e74e3
+        with:
+          report_paths: app/build/test-results/testDebugUnitTest/*.xml
+          check_name: Unit Test Results
+
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │  2 · DEBUG PRE-RELEASE                                                   │
+  # │  Push to develop only. Builds a debug APK and publishes it as a         │
+  # │  GitHub pre-release so testers can install straight from develop.       │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  debug-release:
+    name: Debug Pre-release
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    container:
+      image: eclipse-temurin:17-jdk-jammy
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - name: Install container prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends unzip curl git ca-certificates
+
+      - name: Checkout source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96
+        with:
+          gradle-version: wrapper
+
+      - name: Determine version
+        id: version
+        run: |
+          GRADLE_FILE=app/build.gradle.kts
+          MAJOR=$(grep -E 'val\s+major\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -oE '[0-9]+')
+          MINOR=$(grep -E 'val\s+minor\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -oE '[0-9]+')
+          PATCH=$(grep -E 'val\s+patch\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -oE '[0-9]+')
+          BUILD=$(grep -E 'val\s+build\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -oE '[0-9]+')
+          VERSION_NAME="${MAJOR}.${MINOR}.${PATCH}.${BUILD}"
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          {
+            echo "versionName=$VERSION_NAME"
+            echo "shortSha=$SHORT_SHA"
+            echo "tag=v${VERSION_NAME}-dev.${{ github.run_number }}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Rename APK to consistent filename
+        run: |
+          mv app/build/outputs/apk/debug/*.apk \
+             app/build/outputs/apk/debug/${{ env.APK_DEBUG }}
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+          {
+            echo "### Debug pre-release from \`develop\`"
+            echo ""
+            echo "- **Version:** ${{ steps.version.outputs.versionName }}"
+            echo "- **Commit:** ${{ steps.version.outputs.shortSha }}"
+            echo "- **Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            echo ""
+            echo "## What's changed"
+            echo ""
+            git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges | head -40
+          } > /tmp/changelog.md
+          cat /tmp/changelog.md
+
+      - name: Post APK summary
+        run: |
+          APK_SIZE=$(du -sh app/build/outputs/apk/debug/${{ env.APK_DEBUG }} | cut -f1)
+          {
+            echo "### Debug APK"
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| File | \`${{ env.APK_DEBUG }}\` |"
+            echo "| Size | ${APK_SIZE} |"
+            echo "| Tag | \`${{ steps.version.outputs.tag }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish GitHub pre-release
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "DVIDE ${{ steps.version.outputs.versionName }} (dev)"
+          body_path: /tmp/changelog.md
+          draft: false
+          prerelease: true
+          make_latest: false
+          files: |
+            app/build/outputs/apk/debug/${{ env.APK_DEBUG }}
+
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │  3 · PR SUMMARY                                                          │
+  # │  Every PR into master. Re-runs checks, posts a detailed step summary +  │
+  # │  a sticky PR comment with test/lint results and a changelog preview.    │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  pr-summary:
+    name: PR Summary
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    container:
+      image: eclipse-temurin:17-jdk-jammy
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Install container prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends unzip curl git ca-certificates
+
+      - name: Checkout source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96
+        with:
+          gradle-version: wrapper
+          cache-read-only: true
+
+      - name: Run unit tests
+        id: unit_tests
+        continue-on-error: true
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
+      - name: Run lint
+        id: lint
+        continue-on-error: true
+        run: ./gradlew :app:lintDebug --stacktrace
+
+      - name: Collect results
+        id: results
+        if: always()
+        run: |
+          TEST_COUNT=$(grep -ohr 'tests="[0-9]*"' app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null | grep -oE '[0-9]+' | awk '{s+=$1} END {print s+0}')
+          FAIL_COUNT=$(grep -ohr 'failures="[0-9]*"' app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null | grep -oE '[0-9]+' | awk '{s+=$1} END {print s+0}')
+          echo "testCount=${TEST_COUNT:-0}" >> "$GITHUB_OUTPUT"
+          echo "failCount=${FAIL_COUNT:-0}" >> "$GITHUB_OUTPUT"
+
+      - name: Changelog preview since last stable release
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+          {
+            echo "changelog<<CHANGELOG_EOF"
+            git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges | head -30
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Write step summary
+        if: always()
+        run: |
+          {
+            echo "## PR Summary"
+            echo ""
+            echo "| Check | Result |"
+            echo "|---|---|"
+            echo "| Unit tests | ${{ steps.unit_tests.outcome == 'success' && '✅ passed' || '❌ failed' }} (${{ steps.results.outputs.failCount }}/${{ steps.results.outputs.testCount }} failing) |"
+            echo "| Lint | ${{ steps.lint.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo ""
+            echo "### Changelog preview since last stable release"
+            echo ""
+            echo "${{ steps.changelog.outputs.changelog }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post sticky PR comment
+        if: always()
+        uses: marocchino/sticky-pull-request-comment@52423e01640425a022ef5fd42c6fb5f633a02728
+        with:
+          header: pr-summary
+          message: |
+            ## CI Summary
+
+            | Check | Result |
+            |---|---|
+            | Unit tests | ${{ steps.unit_tests.outcome == 'success' && '✅ passed' || '❌ failed' }} (${{ steps.results.outputs.failCount }}/${{ steps.results.outputs.testCount }} failing) |
+            | Lint | ${{ steps.lint.outcome == 'success' && '✅ passed' || '❌ failed' }} |
+
+            <details>
+            <summary>Changelog preview since last stable release</summary>
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            </details>
+
+      - name: Fail job if checks failed
+        if: steps.unit_tests.outcome != 'success' || steps.lint.outcome != 'success'
+        run: |
+          echo "Unit tests or lint failed — see the PR comment / step summary above."
+          exit 1
+
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │  4 · STABLE RELEASE                                                      │
+  # │  Push to master ONLY (single trigger — no separate tag trigger, so a    │
+  # │  commit can never produce two GitHub Releases). Signs via the Gradle    │
+  # │  signingConfig wired in app/build.gradle.kts, cuts a dedicated          │
+  # │  release/dvide/$version branch for rollback tracking, publishes a       │
+  # │  GitHub Release, and uploads to the Play Console internal track when    │
+  # │  PLAY_CONSOLE_JSON is configured.                                       │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  stable-release:
+    name: Stable Release
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    container:
+      image: eclipse-temurin:17-jdk-jammy
+    timeout-minutes: 45
+    permissions:
+      contents: write
+
+    steps:
+      - name: Install container prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends unzip curl git ca-certificates
+
+      - name: Checkout source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96
+        with:
+          gradle-version: wrapper
+
+      - name: Determine version
+        id: version
+        run: |
+          GRADLE_FILE=app/build.gradle.kts
+          MAJOR=$(grep -E 'val\s+major\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -oE '[0-9]+')
+          MINOR=$(grep -E 'val\s+minor\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -oE '[0-9]+')
+          PATCH=$(grep -E 'val\s+patch\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -oE '[0-9]+')
+          BUILD=$(grep -E 'val\s+build\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -oE '[0-9]+')
+          VERSION_NAME="${MAJOR}.${MINOR}.${PATCH}.${BUILD}"
+          VERSION_CODE=$(( MAJOR * 1000000 + MINOR * 10000 + PATCH * 100 + BUILD ))
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          {
+            echo "versionName=$VERSION_NAME"
+            echo "versionCode=$VERSION_CODE"
+            echo "shortSha=$SHORT_SHA"
+          } >> "$GITHUB_OUTPUT"
+          echo "**Version name:** $VERSION_NAME  |  **Version code:** $VERSION_CODE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create dedicated release branch
+        run: |
+          BRANCH_NAME="release/dvide/${{ steps.version.outputs.versionName }}"
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          if git ls-remote --exit-code --heads origin "$BRANCH_NAME"; then
+            echo "Release branch $BRANCH_NAME exists, checking out."
+            git checkout "$BRANCH_NAME"
+          else
+            echo "Creating dedicated release branch $BRANCH_NAME for safe rollback tracking."
+            git checkout -b "$BRANCH_NAME"
+            git push origin "$BRANCH_NAME"
+          fi
+
+      - name: Decode release keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::warning::No RELEASE_KEYSTORE_B64 secret — release build will be unsigned."
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$GITHUB_WORKSPACE/release.jks"
+
+      # ── Build & sign via the Gradle signingConfig (app/build.gradle.kts) ──
+      # Single signing mechanism: STORE_FILE/STORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD
+      # env vars are read directly by signingConfigs["release"] in Gradle.
+      # No -Pandroid.injected.signing.* properties — avoids two competing
+      # signing paths.
+      - name: Build release AAB + APK
+        env:
+          STORE_FILE:     ${{ github.workspace }}/release.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS:      ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:   ${{ secrets.KEY_PASSWORD }}
+        run: |
+          ./gradlew :app:assembleRelease :app:bundleRelease \
+            -PversionName="${{ steps.version.outputs.versionName }}" \
+            -PversionCode="${{ steps.version.outputs.versionCode }}" \
+            --stacktrace
+
+      - name: Rename release artefacts
+        run: |
+          mv app/build/outputs/apk/release/*.apk \
+             app/build/outputs/apk/release/${{ env.APK_RELEASE }}
+          mv app/build/outputs/bundle/release/*.aab \
+             app/build/outputs/bundle/release/${{ env.AAB_RELEASE }}
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+          {
+            echo "### Release Summary"
+            echo "- **App:** DVIDE"
+            echo "- **Version:** v${{ steps.version.outputs.versionName }}"
+            echo "- **Commit:** ${{ steps.version.outputs.shortSha }}"
+            echo "- **Release Branch:** \`release/dvide/${{ steps.version.outputs.versionName }}\`"
+            echo ""
+            echo "## What's changed"
+            echo ""
+            git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges | head -40
+          } > /tmp/changelog.md
+          cat /tmp/changelog.md
+
+      - name: Generate Play Store release notes
+        run: |
+          mkdir -p release_notes/en-US
+          cat > release_notes/en-US/default.txt <<EOF
+          Source:
+          branch=release/dvide/${{ steps.version.outputs.versionName }}
+          commit=${{ github.sha }}
+          workflow=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
+
+      - name: Post release summary
+        run: |
+          APK_SIZE=$(du -sh app/build/outputs/apk/release/${{ env.APK_RELEASE }} | cut -f1)
+          AAB_SIZE=$(du -sh app/build/outputs/bundle/release/${{ env.AAB_RELEASE }} | cut -f1)
+          {
+            echo "| Artefact | Size |"
+            echo "|---|---|"
+            echo "| APK | ${APK_SIZE} |"
+            echo "| AAB | ${AAB_SIZE} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
+        with:
+          tag_name: v${{ steps.version.outputs.versionName }}
+          name: "DVIDE v${{ steps.version.outputs.versionName }}"
+          body_path: /tmp/changelog.md
+          draft: false
+          prerelease: false
+          files: |
+            app/build/outputs/apk/release/${{ env.APK_RELEASE }}
+            app/build/outputs/bundle/release/${{ env.AAB_RELEASE }}
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # `if:` conditions can't see a step's own `env:` block, and gating
+      # directly on `secrets.*` in `if:` is unreliable — resolve the secret
+      # into a step output first, then gate the publish step on that output.
+      - name: Check Play Console credentials
+        id: play_console_check
+        env:
+          PLAY_CONSOLE_JSON: ${{ secrets.PLAY_CONSOLE_JSON }}
+        run: |
+          if [ -n "$PLAY_CONSOLE_JSON" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to Google Play (Internal Track)
+        if: steps.play_console_check.outputs.configured == 'true'
+        uses: r0adkll/upload-google-play@935ef9c68bb393a8e6116b1575626a7f5be3a7fb
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_CONSOLE_JSON }}
+          packageName: com.knownassurajit.dvide_finance.app
+          releaseFiles: app/build/outputs/bundle/release/*.aab
+          track: internal
+          status: completed
+          whatsNewDirectory: release_notes
+          releaseName: dvide-${{ steps.version.outputs.versionName }}-${{ steps.version.outputs.shortSha }}
+
+      - name: Remove keystore
+        if: always()
+        run: shred -u "$GITHUB_WORKSPACE/release.jks" 2>/dev/null || rm -f "$GITHUB_WORKSPACE/release.jks"
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/dependency-review-action@da24556b548a50705dd671f47852072ea4c105d9
+        with:
+          fail-on-severity: high

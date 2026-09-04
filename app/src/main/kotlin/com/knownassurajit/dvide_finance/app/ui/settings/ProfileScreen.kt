@@ -1,25 +1,54 @@
 package com.knownassurajit.dvide_finance.app.ui.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeContent
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.knownassurajit.dvide_finance.app.data.repository.AppSettings
-import com.knownassurajit.dvide_finance.app.ui.theme.ShapeCommitBtn
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
-import androidx.compose.ui.platform.testTag
+import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
+import com.knownassurajit.dvide_finance.app.ui.theme.ShapeCommitBtn
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     settings: AppSettings,
@@ -32,139 +61,139 @@ fun ProfileScreen(
 
     val isValid = name.trim().isNotEmpty() && email.trim().isNotEmpty()
 
-    Surface(
+    Scaffold(
         modifier = modifier.fillMaxSize(),
-        color    = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-
-            // Screen header
-            Row(
-                modifier          = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                IconButton(onClick = onClose) {
-                    Icon(
-                        imageVector        = CwIcons.Back,
-                        contentDescription = "Back",
-                        tint               = MaterialTheme.colorScheme.onSurface,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Personal details",
+                        style = MaterialTheme.typography.titleLarge,
                     )
-                }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onClose) {
+                        Icon(CwIcons.Back, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentWindowInsets = WindowInsets.safeContent.only(
+            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+        ),
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = DvideDimens.screen)
+                .padding(bottom = DvideDimens.section),
+            verticalArrangement = Arrangement.spacedBy(DvideDimens.item),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = DvideDimens.item)
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
                 Text(
-                    text  = "Personal details",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    text = name.trim().take(1).uppercase().ifEmpty { "?" },
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
 
-            // Scrollable body
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 40.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(DvideDimens.hairline),
             ) {
-                // Avatar preview container
-                Box(
+                Text(
+                    text = "Name",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    placeholder = { Text("Enter your name") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(96.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = name.trim().take(1).uppercase().ifEmpty { "?" },
-                            style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.ExtraBold),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
-
-                // Name input field
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = "Name",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        placeholder = { Text("Enter your name") },
-                        modifier = Modifier.fillMaxWidth().testTag("profile_name_field"),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        ),
-                        singleLine = true
-                    )
-                }
-
-                // Email input field
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = "Email",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        placeholder = { Text("Enter your email") },
-                        modifier = Modifier.fillMaxWidth().testTag("profile_email_field"),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        ),
-                        singleLine = true
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(30.dp))
-
-                // Save button
-                Button(
-                    onClick = {
-                        if (isValid) {
-                            onSave(name.trim(), email.trim())
-                            onClose()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(58.dp).testTag("profile_save_button"),
-                    shape = ShapeCommitBtn,
-                    enabled = isValid,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        .testTag("profile_name_field"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                     ),
-                ) {
-                    Icon(imageVector = CwIcons.Check, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Save Profile",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight(680)),
-                    )
-                }
+                    singleLine = true,
+                )
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(DvideDimens.hairline),
+            ) {
+                Text(
+                    text = "Email",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    placeholder = { Text("Enter your email") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("profile_email_field"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
+                    singleLine = true,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(DvideDimens.item))
+
+            Button(
+                onClick = {
+                    if (isValid) {
+                        onSave(name.trim(), email.trim())
+                        onClose()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(DvideDimens.commit)
+                    .testTag("profile_save_button"),
+                shape = ShapeCommitBtn,
+                enabled = isValid,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            ) {
+                Icon(imageVector = CwIcons.Check, contentDescription = null)
+                Spacer(modifier = Modifier.width(DvideDimens.tight))
+                Text(
+                    text = "Save profile",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
         }
     }

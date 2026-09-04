@@ -25,6 +25,8 @@ class SettingsRepository @Inject constructor(
         val KEY_REGION_CODE      = stringPreferencesKey("region_code")
         val KEY_WEEK_START_DAY   = intPreferencesKey("week_start_day")
         val KEY_NUMBER_FORMAT    = stringPreferencesKey("number_format")
+        val KEY_DYNAMIC_COLOR    = booleanPreferencesKey("dynamic_color")
+        val KEY_PAYDAY           = intPreferencesKey("payday")
 
         private fun defaultCurrencyCode(): String {
             return try {
@@ -54,6 +56,8 @@ class SettingsRepository @Inject constructor(
                 regionCode       = prefs[KEY_REGION_CODE]       ?: defaultRegionCode(),
                 weekStartDay     = prefs[KEY_WEEK_START_DAY]     ?: 2, // Monday
                 numberFormat     = prefs[KEY_NUMBER_FORMAT]     ?: "DEFAULT",
+                dynamicColor     = prefs[KEY_DYNAMIC_COLOR]     ?: false,
+                payday           = prefs[KEY_PAYDAY]            ?: 25,
             )
         }
 
@@ -78,6 +82,10 @@ class SettingsRepository @Inject constructor(
     suspend fun setWeekStartDay(day: Int) = dataStore.edit { it[KEY_WEEK_START_DAY] = day }
 
     suspend fun setNumberFormat(format: String) = dataStore.edit { it[KEY_NUMBER_FORMAT] = format }
+
+    suspend fun setDynamicColor(enabled: Boolean) = dataStore.edit { it[KEY_DYNAMIC_COLOR] = enabled }
+
+    suspend fun setPayday(day: Int) = dataStore.edit { it[KEY_PAYDAY] = day.coerceIn(1, 31) }
 }
 
 data class AppSettings(
@@ -91,4 +99,6 @@ data class AppSettings(
     val regionCode: String       = "GB",
     val weekStartDay: Int        = 2, // Monday
     val numberFormat: String     = "DEFAULT",
+    val dynamicColor: Boolean    = false,
+    val payday: Int              = 25,
 )

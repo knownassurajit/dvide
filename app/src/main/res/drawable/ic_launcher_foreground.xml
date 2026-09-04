@@ -4,18 +4,38 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Ring arc representing the gauge -->
+    <!-- Pay-cycle ring — the repeating salary window -->
     <path
-        android:pathData="M54,18 A36,36 0 1,1 53.99,18"
-        android:strokeColor="#D4AAFF"
-        android:strokeWidth="7"
+        android:pathData="M54,28 A26,26 0 1,1 53.99,28"
+        android:strokeWidth="5.5"
+        android:strokeColor="#4D2778"
         android:strokeLineCap="round"
         android:fillColor="@android:color/transparent" />
-    <!-- "C" letter mark -->
+    <!-- Gauge arc — remaining spendable -->
     <path
-        android:pathData="M63,40 A16,16 0 1,0 63,68"
+        android:pathData="M54,28 A26,26 0 1,1 32.4,67.6"
+        android:strokeWidth="5.5"
         android:strokeColor="#D4AAFF"
-        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent" />
+    <!-- Divide slash — dv/de -->
+    <path
+        android:pathData="M40,76 L70,32"
+        android:strokeWidth="8"
+        android:strokeColor="#D4AAFF"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent" />
+    <!-- Split ticks — income divided into buckets -->
+    <path
+        android:pathData="M46,54 L50,54"
+        android:strokeWidth="3.5"
+        android:strokeColor="#EDDBFF"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent" />
+    <path
+        android:pathData="M58,54 L62,54"
+        android:strokeWidth="3.5"
+        android:strokeColor="#EDDBFF"
         android:strokeLineCap="round"
         android:fillColor="@android:color/transparent" />
 </vector>
