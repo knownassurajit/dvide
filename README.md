@@ -3,7 +3,7 @@
 [![CI / CD](https://github.com/knownassurajit/dvide/actions/workflows/ci-cd.yml/badge.svg?branch=master)](https://github.com/knownassurajit/dvide/actions/workflows/ci-cd.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Min SDK](https://img.shields.io/badge/minSdk-26-green)
-![Target SDK](https://img.shields.io/badge/targetSdk-35-blue)
+![Target SDK](https://img.shields.io/badge/targetSdk-36-blue)
 
 > A salary-cycle personal finance tracker for Android — built with Kotlin, Jetpack Compose, and Material Design 3 Expressive.
 
@@ -49,7 +49,7 @@ Three dashboard layouts surface this engine — pick the one that clicks.
 | Build | Gradle 8.10.2 · KSP · version catalog |
 | CI/CD | GitHub Actions, containerized (develop → master pipeline) |
 | Min SDK | API 26 (Android 8.0) |
-| Target SDK | API 35 (Android 15) |
+| Target SDK | API 36 (Android 16) |
 
 ---
 
@@ -221,7 +221,7 @@ ShapeGaugeCardSharp = RoundedCornerShape(16)
 
 - Android Studio Iguana (2023.2.1) or newer
 - JDK 17
-- Android SDK platform 35
+- Android SDK platform 36
 
 ### First-time setup
 
@@ -360,9 +360,9 @@ mirroring the pattern used by the other `knownassurajit` Android apps
 |---|---|
 | Application ID | `com.knownassurajit.dvide_finance.app` (debug builds use `com.knownassurajit.dvide_finance.app.debug`) |
 | Min SDK | 26 (Android 8.0 Oreo) |
-| Target SDK | 35 (Android 15) |
-| Compile SDK | 35 |
-| Version name | `0.0.0.1` (four-part `major.minor.patch.build`), overridable via `-PversionName` |
+| Target SDK | 36 (Android 16) |
+| Compile SDK | 36 |
+| Version name | `0.0.0.2` (four-part `major.minor.patch.build`), overridable via `-PversionName` |
 | Version code | `major×1_000_000 + minor×10_000 + patch×100 + build`, overridable via `-PversionCode` |
 | Build tools | AGP 8.7.3 / Kotlin 2.1.0 / KSP 2.1.0-1.0.29 |
 
