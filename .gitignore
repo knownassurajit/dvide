@@ -52,6 +52,8 @@ out/
 ### CI artefacts (keep locally cached runs from polluting git status)
 ### ──────────────────────────────────────────────────────────────────
 .cxx/
+release-changelog.md
+release_notes/
 lint-results*.html
 lint-results*.xml
 test-results/
