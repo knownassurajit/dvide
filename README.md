@@ -306,7 +306,7 @@ push to develop/master, or PR into master
 | `test` | push to `develop`/`master`, all PRs into `master` | `compileDebugKotlin` → `testDebugUnitTest` → `lintDebug`, all inside `eclipse-temurin:17-jdk-jammy` |
 | `debug-release` | push to `develop` (needs `test`) | `assembleDebug` → rename → changelog → GitHub pre-release |
 | `pr-summary` | PR into `master` | re-runs tests + lint → step summary + sticky PR comment with a changelog preview since the last stable release |
-| `stable-release` | push to `master` (needs `test`) | dedicated `release/dvide/$version` branch → signed `assembleRelease`/`bundleRelease` → GitHub Release → Play Console internal track (if configured) |
+| `stable-release` | push to `master` (needs `test`) | signed `assembleRelease`/`bundleRelease` of the merged commit → GitHub Release → Play internal track when signing secrets and `PLAY_CONSOLE_JSON` are set |
 
 All jobs run in a `eclipse-temurin:17-jdk-jammy` container; each job installs
 `unzip`/`curl`/`git` via `apt-get` before setting up the Android SDK, since the
@@ -317,21 +317,27 @@ base image ships neither.
 `stable-release` is the **only** release path — the previous tag-triggered
 release job was merged into this one so a single commit can never produce two
 GitHub Releases. Pushing to `master`:
-1. Computes the version from the `major`/`minor`/`patch`/`build` constants in
-   [`app/build.gradle.kts`](app/build.gradle.kts) and passes them as
-   `-PversionName`/`-PversionCode` project properties.
-2. Creates (or reuses) a dedicated `release/dvide/$version` branch for
-   rollback tracking.
-3. Decodes the keystore from `RELEASE_KEYSTORE_B64` and builds
-   `assembleRelease`/`bundleRelease` — signed via the Gradle
-   `signingConfigs["release"]` block (see Signing below); this is now the
-   **only** signing mechanism (the old `-Pandroid.injected.signing.*`
-   property approach was removed to avoid two competing signing paths).
-4. Generates a changelog from `git log` since the previous tag.
-5. Publishes a GitHub Release with the APK + AAB attached.
-6. Uploads the AAB to the Play Console internal track, only when
-   `PLAY_CONSOLE_JSON` is set.
-7. Shreds the keystore from the runner.
+1. Computes `versionName` from the `major`/`minor`/`patch`/`build` constants in
+   [`app/build.gradle.kts`](app/build.gradle.kts). `versionCode` is that
+   formula plus `github.run_number`, so each master merge is a new Play
+   version even when those constants have not changed. Both are passed as
+   `-PversionName`/`-PversionCode`.
+2. Reads `applicationId` and fails if it is not
+   `com.knownassurajit.dvide_finance.app`. That value is the Play `packageName`.
+3. Decodes `RELEASE_KEYSTORE_B64` when the full signing set is present and
+   builds `assembleRelease`/`bundleRelease`. Signing uses only the Gradle
+   `signingConfigs["release"]` block (see Signing below).
+4. Renames the bundle to `app/build/outputs/bundle/release/dvide-release.aab`
+   and, when signing secrets are set, checks that the AAB is signed.
+5. Publishes a GitHub Release tagged
+   `v<versionName>.<run_number>` with the APK and AAB attached.
+6. Uploads that AAB to the Play Console **internal** track when
+   `PLAY_CONSOLE_JSON` is set. The upload is skipped when that secret is
+   unset. If it is set but the signing secrets are not, the job fails
+   instead of sending an unsigned bundle.
+7. Pushes `release/dvide/<versionName>.<run_number>` at the merged commit
+   for rollback. The job does not check that branch out.
+8. Shreds the keystore from the runner.
 
 ### Required GitHub Secrets
 
@@ -344,13 +350,15 @@ Set these in **Settings → Secrets and variables → Actions**:
 | `STORE_PASSWORD` | Keystore password |
 | `KEY_ALIAS` | Key alias inside the keystore |
 | `KEY_PASSWORD` | Private key password |
-| `PLAY_CONSOLE_JSON` | *(optional)* Play Console service-account JSON — Play upload is skipped when unset |
+| `PLAY_CONSOLE_JSON` | *(optional)* Play Console service-account JSON. When set together with the four signing secrets, the signed AAB is uploaded to the internal track. When unset, Play upload is skipped. |
 
 `STORE_FILE`/`STORE_PASSWORD`/`KEY_ALIAS`/`KEY_PASSWORD` are read directly by
 `signingConfigs["release"]` in `app/build.gradle.kts` via `System.getenv(...)`,
 mirroring the pattern used by the other `knownassurajit` Android apps
 (clndr, void). If the keystore file isn't present at build time, the
-`release` build type simply skips the signing config rather than failing.
+`release` build type skips the signing config. Play upload runs only when
+`PLAY_CONSOLE_JSON` and all four signing secrets are set; a Play credential
+without a keystore fails the job.
 
 ---
 
@@ -363,7 +371,7 @@ mirroring the pattern used by the other `knownassurajit` Android apps
 | Target SDK | 36 (Android 16) |
 | Compile SDK | 36 |
 | Version name | `0.0.0.2` (four-part `major.minor.patch.build`), overridable via `-PversionName` |
-| Version code | `major×1_000_000 + minor×10_000 + patch×100 + build`, overridable via `-PversionCode` |
+| Version code | `major×1_000_000 + minor×10_000 + patch×100 + build`, overridable via `-PversionCode`. Master releases add `github.run_number` so Play version codes keep increasing. |
 | Build tools | AGP 8.7.3 / Kotlin 2.1.0 / KSP 2.1.0-1.0.29 |
 
 `versionName`/`versionCode` in `app/build.gradle.kts` now read the
