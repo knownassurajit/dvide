@@ -8,19 +8,19 @@ plugins {
 
 android {
     namespace   = "com.knownassurajit.dvide_finance.app"
-    compileSdk  = 35
+    compileSdk  = 36
 
     defaultConfig {
         applicationId = "com.knownassurajit.dvide_finance.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
 
         // Deterministic versioning formula (fallback when CI doesn't pass
         // -PversionName / -PversionCode project properties)
         val major = 0
         val minor = 0
         val patch = 0
-        val build = 1
+        val build = 2
 
         val defaultVersionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build
         val defaultVersionName = "$major.$minor.$patch.$build"
