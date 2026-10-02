@@ -445,11 +445,17 @@ jobs:
           # gets a Play versionCode even when the Gradle constants are unchanged.
           BASE_CODE=$(( MAJOR * 1000000 + MINOR * 10000 + PATCH * 100 + BUILD ))
           VERSION_CODE=$(( BASE_CODE + GITHUB_RUN_NUMBER ))
+          # run_attempt makes a re-run a new tag. v0.0.0.2.27 was published
+          # without assets and is now immutable, so that tag cannot be reused.
+          RELEASE_TAG="v${VERSION_NAME}.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          ROLLBACK_BRANCH="release/dvide/${VERSION_NAME}.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
           SHORT_SHA=$(git rev-parse --short=7 HEAD)
           {
             echo "versionName=$VERSION_NAME"
             echo "versionCode=$VERSION_CODE"
             echo "packageName=$PACKAGE_NAME"
+            echo "releaseTag=$RELEASE_TAG"
+            echo "rollbackBranch=$ROLLBACK_BRANCH"
             echo "shortSha=$SHORT_SHA"
           } >> "$GITHUB_OUTPUT"
           {
@@ -558,7 +564,8 @@ jobs:
             echo "- **Package:** \`${{ steps.version.outputs.packageName }}\`"
             echo "- **Version:** v${{ steps.version.outputs.versionName }} (code ${{ steps.version.outputs.versionCode }})"
             echo "- **Commit:** ${{ steps.version.outputs.shortSha }}"
-            echo "- **Rollback branch:** \`release/dvide/${{ steps.version.outputs.versionName }}.${{ github.run_number }}\`"
+            echo "- **Rollback branch:** \`${{ steps.version.outputs.rollbackBranch }}\`"
+            echo "- **GitHub tag:** \`${{ steps.version.outputs.releaseTag }}\`"
             echo ""
             echo "## What's changed"
             echo ""
@@ -613,10 +620,15 @@ jobs:
           whatsNewDirectory: release_notes
           releaseName: dvide-${{ steps.version.outputs.versionName }}-${{ steps.version.outputs.shortSha }}
 
+      # Asset upload to an existing immutable release must not fail the job.
+      # Play has already run. v3.0.3 drafts the release, attaches files, then
+      # publishes; a leftover conflict still continues.
       - name: Publish GitHub Release
+        id: github_release
+        continue-on-error: true
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          tag_name: v${{ steps.version.outputs.versionName }}.${{ github.run_number }}
+          tag_name: ${{ steps.version.outputs.releaseTag }}
           name: "dvide v${{ steps.version.outputs.versionName }} (${{ steps.version.outputs.versionCode }})"
           body_path: ${{ github.workspace }}/release-changelog.md
           draft: false
@@ -634,7 +646,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          BRANCH="release/dvide/${{ steps.version.outputs.versionName }}.${{ github.run_number }}"
+          BRANCH="${{ steps.version.outputs.rollbackBranch }}"
           git push origin "HEAD:refs/heads/${BRANCH}"
 
       - name: Remove keystore

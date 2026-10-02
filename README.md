@@ -306,7 +306,7 @@ push to develop/master, or PR into master
 | `test` | push to `develop`/`master`, all PRs into `master` | `compileDebugKotlin` → `testDebugUnitTest` → `lintDebug`, all inside `eclipse-temurin:17-jdk-jammy` |
 | `debug-release` | push to `develop` (needs `test`) | `assembleDebug` → rename → changelog → GitHub pre-release |
 | `pr-summary` | PR into `master` | re-runs tests + lint → step summary + sticky PR comment with a changelog preview since the last stable release |
-| `stable-release` | push to `master` (needs `test`) | signed `assembleRelease`/`bundleRelease` of the merged commit → GitHub Release → Play internal track when signing secrets and `PLAY_CONSOLE_JSON` are set |
+| `stable-release` | push to `master` (needs `test`) | signed `assembleRelease`/`bundleRelease` of the merged commit → Play internal track when signing secrets and `PLAY_CONSOLE_JSON` are set → GitHub Release (non-blocking) |
 
 All jobs run in a `eclipse-temurin:17-jdk-jammy` container; each job installs
 `unzip`/`curl`/`git` via `apt-get` before setting up the Android SDK, since the
@@ -329,13 +329,16 @@ GitHub Releases. Pushing to `master`:
    `signingConfigs["release"]` block (see Signing below).
 4. Renames the bundle to `app/build/outputs/bundle/release/dvide-release.aab`
    and, when signing secrets are set, checks that the AAB is signed.
-5. Publishes a GitHub Release tagged
-   `v<versionName>.<run_number>` with the APK and AAB attached.
-6. Uploads that AAB to the Play Console **internal** track when
+5. Uploads that AAB to the Play Console **internal** track when
    `PLAY_CONSOLE_JSON` is set. The upload is skipped when that secret is
    unset. If it is set but the signing secrets are not, the job fails
-   instead of sending an unsigned bundle.
-7. Pushes `release/dvide/<versionName>.<run_number>` at the merged commit
+   instead of sending an unsigned bundle. Play runs before the GitHub
+   Release, so an immutable-release failure does not skip the upload.
+6. Publishes a GitHub Release tagged
+   `v<versionName>.<run_number>.<run_attempt>` with the APK and AAB attached.
+   `continue-on-error` is set: a conflict with an existing immutable tag
+   (such as `v0.0.0.2.27`) does not fail the job.
+7. Pushes `release/dvide/<versionName>.<run_number>.<run_attempt>` at the merged commit
    for rollback. The job does not check that branch out.
 8. Shreds the keystore from the runner.
 
