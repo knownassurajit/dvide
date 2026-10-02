@@ -235,7 +235,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish GitHub pre-release
-        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: "DVIDE ${{ steps.version.outputs.versionName }} (dev)"
@@ -599,8 +599,22 @@ jobs:
             echo "| Upload | ${PLAY} |"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # Play runs before the GitHub Release. Immutable releases reject assets
+      # added after publish, and that failure must not skip the Play upload.
+      - name: Publish to Google Play (internal track)
+        if: steps.release_secrets.outputs.play == 'true'
+        uses: r0adkll/upload-google-play@935ef9c68bb393a8e6116b1575626a7f5be3a7fb
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_CONSOLE_JSON }}
+          packageName: ${{ steps.version.outputs.packageName }}
+          releaseFiles: ${{ steps.artefacts.outputs.aab }}
+          track: ${{ env.PLAY_TRACK }}
+          status: completed
+          whatsNewDirectory: release_notes
+          releaseName: dvide-${{ steps.version.outputs.versionName }}-${{ steps.version.outputs.shortSha }}
+
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: v${{ steps.version.outputs.versionName }}.${{ github.run_number }}
           name: "dvide v${{ steps.version.outputs.versionName }} (${{ steps.version.outputs.versionCode }})"
@@ -613,18 +627,6 @@ jobs:
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish to Google Play (internal track)
-        if: steps.release_secrets.outputs.play == 'true'
-        uses: r0adkll/upload-google-play@935ef9c68bb393a8e6116b1575626a7f5be3a7fb
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_CONSOLE_JSON }}
-          packageName: ${{ steps.version.outputs.packageName }}
-          releaseFiles: ${{ steps.artefacts.outputs.aab }}
-          track: ${{ env.PLAY_TRACK }}
-          status: completed
-          whatsNewDirectory: release_notes
-          releaseName: dvide-${{ steps.version.outputs.versionName }}-${{ steps.version.outputs.shortSha }}
 
       # Point a rollback branch at this master commit without checking it out,
       # so the AAB that was just built stays the merged commit.
