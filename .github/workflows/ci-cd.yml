@@ -124,7 +124,7 @@ jobs:
 
       - name: Annotate PR with test failures
         if: failure() && github.event_name == 'pull_request'
-        uses: mikepenz/action-junit-report@3585e9575db828022551b4231f165eb59a0e74e3
+        uses: mikepenz/action-junit-report@b7b80d7ac5b1da46d6aaff9fb57ad50d8453bcb3
         with:
           report_paths: app/build/test-results/testDebugUnitTest/*.xml
           check_name: Unit Test Results
