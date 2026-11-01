@@ -25,4 +25,10 @@ interface CycleDao {
 
     @Query("SELECT * FROM cycles")
     suspend fun getAll(): List<ManualCycle>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(cycles: List<ManualCycle>)
+
+    @Query("DELETE FROM cycles")
+    suspend fun deleteAll()
 }

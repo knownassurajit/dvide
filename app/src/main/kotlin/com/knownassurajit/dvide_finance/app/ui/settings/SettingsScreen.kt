@@ -1,5 +1,8 @@
 package com.knownassurajit.dvide_finance.app.ui.settings
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,6 +14,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -31,10 +35,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.knownassurajit.dvide_finance.app.data.backup.BackupCounts
+import com.knownassurajit.dvide_finance.app.data.backup.BackupParse
 import com.knownassurajit.dvide_finance.app.data.repository.AppSettings
 import com.knownassurajit.dvide_finance.app.domain.model.AppFont
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
 import com.knownassurajit.dvide_finance.app.domain.model.ExportFormat
+import com.knownassurajit.dvide_finance.app.domain.model.SwipeAction
+import com.knownassurajit.dvide_finance.app.domain.model.SwipeSide
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
 import com.knownassurajit.dvide_finance.app.ui.components.HueSlider
 import com.knownassurajit.dvide_finance.app.ui.components.PaydayCalendar
@@ -44,6 +52,8 @@ import com.knownassurajit.dvide_finance.app.ui.theme.fontFamilyFor
 import com.knownassurajit.dvide_finance.app.ui.theme.hexToHue
 import com.knownassurajit.dvide_finance.app.ui.theme.hueToPrimaryColor
 import com.knownassurajit.dvide_finance.app.ui.theme.toHex
+import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 private object SettingsSpace {
     val section = 32.dp
@@ -75,6 +85,11 @@ fun SettingsScreen(
     onPaydayChange: (Int) -> Unit = {},
     onExport: () -> Unit = {},
     onExportFormat: ((ExportFormat) -> Unit)? = null,
+    onSwipeLeftChange: (SwipeAction) -> Unit = {},
+    onSwipeRightChange: (SwipeAction) -> Unit = {},
+    onExportBackup: suspend (Uri) -> Result<BackupCounts> = { Result.failure(UnsupportedOperationException()) },
+    onReadBackup: suspend (Uri) -> BackupParse = { BackupParse.Failure("Restore isn't available here.") },
+    onRestoreBackup: suspend (BackupParse.Success) -> Result<BackupCounts> = { Result.failure(UnsupportedOperationException()) },
     modifier: Modifier = Modifier,
 ) {
     var showFontDialog by remember { mutableStateOf(false) }
@@ -83,6 +98,39 @@ fun SettingsScreen(
     var showWeekStartDialog by remember { mutableStateOf(false) }
     var showNumberFormatDialog by remember { mutableStateOf(false) }
     var showExportFormatDialog by remember { mutableStateOf(false) }
+    var swipeDialogSide by remember { mutableStateOf<SwipeSide?>(null) }
+    var pendingRestore by remember { mutableStateOf<BackupParse.Success?>(null) }
+    var backupBusy by remember { mutableStateOf(false) }
+
+    val scope = rememberCoroutineScope()
+    val snackbarHost = remember { SnackbarHostState() }
+
+    val createBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) scope.launch {
+            backupBusy = true
+            val result = onExportBackup(uri)
+            backupBusy = false
+            snackbarHost.showSnackbar(
+                result.fold(
+                    onSuccess = { "Backed up ${it.cycles} cycle${if (it.cycles == 1) "" else "s"} and ${it.transactions} entr${if (it.transactions == 1) "y" else "ies"}." },
+                    onFailure = { "Backup failed: ${it.message ?: "the file could not be written"}" },
+                )
+            )
+        }
+    }
+    val openBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            backupBusy = true
+            val parsed = onReadBackup(uri)
+            backupBusy = false
+            when (parsed) {
+                is BackupParse.Success -> pendingRestore = parsed
+                is BackupParse.Failure -> snackbarHost.showSnackbar(parsed.reason)
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -103,18 +151,22 @@ fun SettingsScreen(
                 )
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHost) },
         containerColor = MaterialTheme.colorScheme.surface,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        // Sides and bottom (cutouts, gesture/nav bar, keyboard) are applied once here; the top bar owns the top inset.
+        contentWindowInsets = WindowInsets.safeContent.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         modifier       = modifier,
     ) { paddingValues ->
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
+            if (backupBusy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+
             // Personal & Profile
             SettingsSection(title = "Profile") {
                 SettingsRow(
@@ -271,6 +323,27 @@ fun SettingsScreen(
                 }
             }
 
+            SettingsSection(title = "Gestures") {
+                SettingsRow(
+                    label = "Swipe left",
+                    value = settings.swipeLeft.label,
+                    onClick = { swipeDialogSide = SwipeSide.LEFT },
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                SettingsRow(
+                    label = "Swipe right",
+                    value = settings.swipeRight.label,
+                    onClick = { swipeDialogSide = SwipeSide.RIGHT },
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                Text(
+                    text = "Applies to entries on the home screen. Deleting always asks first, and a long press still opens the entry menu.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(SettingsSpace.inner),
+                )
+            }
+
             // Localization
             SettingsSection(title = "Localization") {
                 val currencySymbol = try {
@@ -338,17 +411,57 @@ fun SettingsScreen(
                         }
                     },
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                SettingsRow(
+                    label = "Back up to file",
+                    value = "JSON",
+                    onClick = { if (!backupBusy) createBackup.launch("dvide-backup-${LocalDate.now()}.json") },
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                SettingsRow(
+                    label = "Restore from file",
+                    value = "Replaces all data",
+                    onClick = {
+                        if (!backupBusy) openBackup.launch(arrayOf("application/json", "application/octet-stream", "text/plain"))
+                    },
+                )
             }
 
-            Text(
-                text = "dv/de · divide each cycle",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 16.dp),
-            )
+            DeveloperCredits(modifier = Modifier.padding(top = 8.dp))
 
-            Spacer(modifier = Modifier.height(80.dp))
+            // Bottom system insets are already applied by the Scaffold; this is just breathing room.
+            Spacer(modifier = Modifier.height(DvideDimens.section))
         }
+    }
+
+    swipeDialogSide?.let { side ->
+        SwipeActionDialog(
+            side = side,
+            current = if (side == SwipeSide.LEFT) settings.swipeLeft else settings.swipeRight,
+            onSelect = { if (side == SwipeSide.LEFT) onSwipeLeftChange(it) else onSwipeRightChange(it) },
+            onDismiss = { swipeDialogSide = null },
+        )
+    }
+
+    pendingRestore?.let { backup ->
+        RestoreConfirmDialog(
+            backup = backup,
+            onConfirm = {
+                pendingRestore = null
+                scope.launch {
+                    backupBusy = true
+                    val result = onRestoreBackup(backup)
+                    backupBusy = false
+                    snackbarHost.showSnackbar(
+                        result.fold(
+                            onSuccess = { "Restored ${it.cycles} cycle${if (it.cycles == 1) "" else "s"} and ${it.transactions} entr${if (it.transactions == 1) "y" else "ies"}." },
+                            onFailure = { "Restore failed, your data was not changed: ${it.message ?: "unknown error"}" },
+                        )
+                    )
+                }
+            },
+            onDismiss = { pendingRestore = null },
+        )
     }
 
     if (showExportFormatDialog && onExportFormat != null) {

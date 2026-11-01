@@ -24,4 +24,12 @@ data class Metrics(
 ) {
     val balanceFraction: Float
         get() = if (spendable > 0) (balance / spendable).toFloat().coerceIn(0f, 1f) else 0f
+
+    /** "12 days left", "1 day left", or "Cycle ended" once the window is over. */
+    val daysLeftText: String
+        get() = if (ended) "Cycle ended" else "${Cycle.daysText(cycle.remaining)} left"
+
+    /** Compact form for tight spaces (gauge, widget): "12d left" / "Ended". */
+    val daysLeftShort: String
+        get() = if (ended) "Ended" else "${cycle.remaining}d left"
 }

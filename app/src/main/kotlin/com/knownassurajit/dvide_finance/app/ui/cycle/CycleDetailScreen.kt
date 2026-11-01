@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.knownassurajit.dvide_finance.app.data.model.Category
 import com.knownassurajit.dvide_finance.app.data.model.ManualCycle
+import com.knownassurajit.dvide_finance.app.domain.model.Cycle
 import com.knownassurajit.dvide_finance.app.domain.model.Metrics
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
 import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
@@ -109,9 +110,22 @@ fun CycleDetailScreen(
                 SettingsLabel("Parameters")
                 SettingsGroup {
                     CycleRow(
+                        label    = "Cycle length",
+                        subLabel = metrics.cycle.label(),
+                        trailing = metrics.cycle.totalDaysLabel(),
+                    )
+                    SettingsDivider()
+                    CycleRow(
                         label    = "Cycle ends",
-                        subLabel = "${metrics.cycle.remaining} days remaining",
+                        subLabel = if (metrics.ended) "Cycle ended"
+                                   else "${Cycle.daysText(metrics.cycle.remaining)} remaining, including today",
                         trailing = metrics.cycle.end.dayOfMonth.ordinal(),
+                    )
+                    SettingsDivider()
+                    CycleRow(
+                        label    = "Next salary",
+                        subLabel = "The day after this cycle ends",
+                        trailing = metrics.cycle.nextSalaryLabel(),
                     )
                     SettingsDivider()
                     CycleRow(

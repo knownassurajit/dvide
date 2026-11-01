@@ -103,7 +103,7 @@ fun FocusDashboard(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Text(
-                                text = "${metrics.cycle.remaining} days left",
+                                text = metrics.daysLeftText,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,

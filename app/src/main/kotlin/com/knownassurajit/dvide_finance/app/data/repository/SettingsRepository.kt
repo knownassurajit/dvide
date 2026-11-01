@@ -2,10 +2,14 @@ package com.knownassurajit.dvide_finance.app.data.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
+import com.knownassurajit.dvide_finance.app.data.backup.BackupSettings
 import com.knownassurajit.dvide_finance.app.domain.model.AppFont
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
+import com.knownassurajit.dvide_finance.app.domain.model.SwipeAction
+import com.knownassurajit.dvide_finance.app.domain.model.SwipeConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 import javax.inject.Inject
@@ -31,6 +35,8 @@ class SettingsRepository @Inject constructor(
         val KEY_PAYDAY           = intPreferencesKey("payday")
         val KEY_FONT_OPTION      = stringPreferencesKey("font_option")
         val KEY_PROFILE_PICTURE_URI = stringPreferencesKey("profile_picture_uri")
+        val KEY_SWIPE_LEFT       = stringPreferencesKey("swipe_left_action")
+        val KEY_SWIPE_RIGHT      = stringPreferencesKey("swipe_right_action")
 
         private fun defaultCurrencyCode(): String {
             return try {
@@ -65,6 +71,9 @@ class SettingsRepository @Inject constructor(
                 dynamicColor     = prefs[KEY_DYNAMIC_COLOR]     ?: false,
                 payday           = prefs[KEY_PAYDAY]            ?: 25,
                 fontOption       = AppFont.fromKey(prefs[KEY_FONT_OPTION]),
+                swipeLeft        = SwipeAction.fromKey(prefs[KEY_SWIPE_LEFT], SwipeConfig.DEFAULT_LEFT),
+                swipeRight       = SwipeAction.fromKey(prefs[KEY_SWIPE_RIGHT], SwipeConfig.DEFAULT_RIGHT),
+                isLoaded         = true,
             )
         }
 
@@ -102,6 +111,55 @@ class SettingsRepository @Inject constructor(
     suspend fun setPayday(day: Int) = dataStore.edit { it[KEY_PAYDAY] = day.coerceIn(1, 31) }
 
     suspend fun setFontOption(font: AppFont) = dataStore.edit { it[KEY_FONT_OPTION] = font.key }
+
+    suspend fun setSwipeLeft(action: SwipeAction) = dataStore.edit { it[KEY_SWIPE_LEFT] = action.key }
+
+    suspend fun setSwipeRight(action: SwipeAction) = dataStore.edit { it[KEY_SWIPE_RIGHT] = action.key }
+
+    /** Preferences that belong in a backup file (no profile photo reference, no one-time flags). */
+    suspend fun exportForBackup(): BackupSettings {
+        val s = settingsFlow.first()
+        return BackupSettings(
+            seedHue = s.seedHue,
+            darkTheme = s.darkTheme,
+            dynamicColor = s.dynamicColor,
+            dashboardVariant = s.dashboardVariant,
+            fontOption = s.fontOption,
+            currencyCode = s.currencyCode,
+            regionCode = s.regionCode,
+            weekStartDay = s.weekStartDay,
+            numberFormat = s.numberFormat,
+            showDecimals = s.showDecimals,
+            payday = s.payday,
+            swipeLeft = s.swipeLeft,
+            swipeRight = s.swipeRight,
+            userName = s.userName,
+            userEmail = s.userEmail,
+        )
+    }
+
+    /**
+     * Applies a restored backup in one atomic DataStore edit. Fields that are null in [settings] are left as they
+     * are on this device. Marks the app as set up, because a restored backup replaces onboarding.
+     */
+    suspend fun applyBackup(settings: BackupSettings) = dataStore.edit { p ->
+        settings.seedHue?.let { p[KEY_SEED_HUE] = it }
+        settings.darkTheme?.let { p[KEY_DARK_THEME] = it }
+        settings.dynamicColor?.let { p[KEY_DYNAMIC_COLOR] = it }
+        settings.dashboardVariant?.let { p[KEY_DASHBOARD_VARIANT] = it.key }
+        settings.fontOption?.let { p[KEY_FONT_OPTION] = it.key }
+        settings.currencyCode?.let { p[KEY_CURRENCY_CODE] = it }
+        settings.regionCode?.let { p[KEY_REGION_CODE] = it }
+        settings.weekStartDay?.let { p[KEY_WEEK_START_DAY] = it }
+        settings.numberFormat?.let { p[KEY_NUMBER_FORMAT] = it }
+        settings.showDecimals?.let { p[KEY_SHOW_DECIMALS] = it }
+        settings.payday?.let { p[KEY_PAYDAY] = it.coerceIn(1, 31) }
+        settings.swipeLeft?.let { p[KEY_SWIPE_LEFT] = it.key }
+        settings.swipeRight?.let { p[KEY_SWIPE_RIGHT] = it.key }
+        settings.userName?.let { p[KEY_USER_NAME] = it }
+        settings.userEmail?.let { p[KEY_USER_EMAIL] = it }
+        p[KEY_SEEDED] = true
+    }
 }
 
 data class AppSettings(
@@ -120,4 +178,14 @@ data class AppSettings(
     val dynamicColor: Boolean    = false,
     val payday: Int              = 25,
     val fontOption: AppFont      = AppFont.GOOGLE_SANS,
-)
+    val swipeLeft: SwipeAction   = SwipeConfig.DEFAULT_LEFT,
+    val swipeRight: SwipeAction  = SwipeConfig.DEFAULT_RIGHT,
+    /**
+     * False only for the placeholder value used before DataStore has delivered its first snapshot. Startup code
+     * must not draw (or pick onboarding vs. dashboard) from an unloaded instance, or the user sees default
+     * values flash before their real ones.
+     */
+    val isLoaded: Boolean        = false,
+) {
+    val swipeConfig: SwipeConfig get() = SwipeConfig(swipeLeft, swipeRight)
+}

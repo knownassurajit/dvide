@@ -89,7 +89,7 @@ class DvideWidgetProvider : AppWidgetProvider() {
                         views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
                         if (metrics != null) {
-                            views.setTextViewText(R.id.widget_days_left, "${metrics.cycle.remaining}d left")
+                            views.setTextViewText(R.id.widget_days_left, metrics.daysLeftShort)
                             views.setTextViewText(R.id.widget_cycle_balance, formatter.format(metrics.balance))
                             views.setTextViewText(R.id.widget_daily_quota, formatter.format(metrics.safeToSpend))
                             views.setTextViewText(R.id.widget_weekly_quota, formatter.format(metrics.safeToSpend * 7.0))

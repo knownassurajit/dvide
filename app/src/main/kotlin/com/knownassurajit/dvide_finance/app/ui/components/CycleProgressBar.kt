@@ -22,6 +22,7 @@ fun CycleProgressBar(
     cycle: Cycle,
     tight: Boolean,
     modifier: Modifier = Modifier,
+    ended: Boolean = false,
 ) {
     val progress by animateFloatAsState(
         targetValue  = cycle.progress,
@@ -65,10 +66,19 @@ fun CycleProgressBar(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text  = "${cycle.remaining} days left",
+                text  = if (ended) "Cycle ended" else "${Cycle.daysText(cycle.remaining)} left",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+
+        // Cycle length and the next salary date (always the day after the cycle's last day).
+        Text(
+            text  = "${cycle.totalDaysLabel()} · Next salary ${cycle.nextSalaryLabel()}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
