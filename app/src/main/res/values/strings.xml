@@ -71,4 +71,5 @@
     <string name="cd_back">Back</string>
     <string name="cd_view_cycle">View cycle detail</string>
     <string name="version_info">DVIDE · v1.0 · made by hand</string>
+    <string name="widget_description">View salary cycle balance, daily quota, and weekly quota.</string>
 </resources>

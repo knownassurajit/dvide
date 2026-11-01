@@ -37,6 +37,7 @@ fun CycleDetailScreen(
     onClose: () -> Unit,
     onEdit: () -> Unit = {},
     onDelete: () -> Unit = {},
+    onExport: (() -> Unit)? = null,
 ) {
     val formatter = LocalCurrencyFormatter.current
     var confirmDelete by remember { mutableStateOf(false) }
@@ -57,6 +58,11 @@ fun CycleDetailScreen(
                 },
                 actions = {
                     if (cycle != null) {
+                        if (onExport != null) {
+                            IconButton(onClick = onExport) {
+                                Icon(CwIcons.Export, contentDescription = "Save and export cycle CSV")
+                            }
+                        }
                         IconButton(onClick = onEdit) {
                             Icon(CwIcons.Edit, contentDescription = "Edit cycle")
                         }

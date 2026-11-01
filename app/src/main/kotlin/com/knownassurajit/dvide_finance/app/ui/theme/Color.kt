@@ -1,349 +1,168 @@
 ﻿package com.knownassurajit.dvide_finance.app.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import kotlin.math.abs
 
 // ─────────────────────────────────────────────────────────────
-// M3 tonal colour palettes — four seed presets (Violet/Indigo/Forest/Clay).
-// Generated to closely match the OKLCH token values in the web design.
+// Dynamic brand color palette generator
+// Retains consistent, pitch-dark, high-contrast surfaces throughout
+// while allowing the brand hue to modulate primary & accent behaviors.
 // ─────────────────────────────────────────────────────────────
 
-// ══ Violet (hue 300) ══
-object VioletPalette {
-    val darkScheme = darkColorScheme(
-        primary              = Color(0xFFD4AAFF),
-        onPrimary            = Color(0xFF21004E),
-        primaryContainer     = Color(0xFF4D2778),
-        onPrimaryContainer   = Color(0xFFEDDBFF),
-        secondary            = Color(0xFFCCB9E0),
-        onSecondary          = Color(0xFF332548),
-        secondaryContainer   = Color(0xFF4A3B60),
-        onSecondaryContainer = Color(0xFFE9D6FC),
-        tertiary             = Color(0xFFF3B4C0),
-        onTertiary           = Color(0xFF4B1E29),
-        tertiaryContainer    = Color(0xFF65343F),
-        onTertiaryContainer  = Color(0xFFFFD9E0),
-        error                = Color(0xFFE8A87A),   // terracotta — overspent state
-        onError              = Color(0xFF4A1C00),
-        errorContainer       = Color(0xFF7A3A12),
-        onErrorContainer     = Color(0xFFFFDBCC),
-        background           = Color(0xFF100C14),
-        onBackground         = Color(0xFFEDE6F5),
-        surface              = Color(0xFF100C14),
-        onSurface            = Color(0xFFEDE6F5),
-        surfaceVariant       = Color(0xFF3C3348),
-        onSurfaceVariant     = Color(0xFFC2B6D2),
-        outline              = Color(0xFF8A7A9A),
-        outlineVariant       = Color(0xFF3C3348),
-        surfaceTint          = Color(0xFFD4AAFF),
-        inverseSurface       = Color(0xFFEDE6F5),
-        inverseOnSurface     = Color(0xFF1E1828),
-        inversePrimary       = Color(0xFF6B3FA8),
-        scrim                = Color(0x8C000000),
-        surfaceBright        = Color(0xFF383040),
-        surfaceContainer     = Color(0xFF1D1924),
-        surfaceContainerHigh = Color(0xFF272230),
-        surfaceContainerHighest = Color(0xFF322C3B),
-        surfaceContainerLow  = Color(0xFF19151F),
-        surfaceContainerLowest = Color(0xFF100C14),
-        surfaceDim           = Color(0xFF100C14),
-    )
-
-    val lightScheme = lightColorScheme(
-        primary              = Color(0xFF6B3FA8),
-        onPrimary            = Color(0xFFFFFFFF),
-        primaryContainer     = Color(0xFFEDDBFF),
-        onPrimaryContainer   = Color(0xFF230060),
-        secondary            = Color(0xFF63587A),
-        onSecondary          = Color(0xFFFFFFFF),
-        secondaryContainer   = Color(0xFFE9D6FC),
-        onSecondaryContainer = Color(0xFF1F1133),
-        tertiary             = Color(0xFF81485A),
-        onTertiary           = Color(0xFFFFFFFF),
-        tertiaryContainer    = Color(0xFFFFD9E0),
-        onTertiaryContainer  = Color(0xFF331019),
-        error                = Color(0xFF9A5A20),   // terracotta light
-        onError              = Color(0xFFFFFFFF),
-        errorContainer       = Color(0xFFFFDBC8),
-        onErrorContainer     = Color(0xFF3A1200),
-        background           = Color(0xFFFEFAFF),
-        onBackground         = Color(0xFF1C1624),
-        surface              = Color(0xFFFEFAFF),
-        onSurface            = Color(0xFF1C1624),
-        surfaceVariant       = Color(0xFFDED5EB),
-        onSurfaceVariant     = Color(0xFF4F4560),
-        outline              = Color(0xFF7D7190),
-        outlineVariant       = Color(0xFFDED5EB),
-        surfaceTint          = Color(0xFF6B3FA8),
-        inverseSurface       = Color(0xFF322C3B),
-        inverseOnSurface     = Color(0xFFF5EEFF),
-        inversePrimary       = Color(0xFFD4AAFF),
-        scrim                = Color(0x66000000),
-        surfaceBright        = Color(0xFFFEFAFF),
-        surfaceContainer     = Color(0xFFF2ECF8),
-        surfaceContainerHigh = Color(0xFFECE5F5),
-        surfaceContainerHighest = Color(0xFFE6DFEF),
-        surfaceContainerLow  = Color(0xFFF8F2FF),
-        surfaceContainerLowest = Color(0xFFFFFFFF),
-        surfaceDim           = Color(0xFFDFD8E6),
+fun hslToColor(h: Float, s: Float, l: Float): Color {
+    val normH = ((h % 360f) + 360f) % 360f
+    val c = (1f - abs(2f * l - 1f)) * s
+    val m = l - c / 2f
+    val x = c * (1f - abs((normH / 60f) % 2f - 1f))
+    val (r, g, b) = when {
+        normH < 60f  -> Triple(c, x, 0f)
+        normH < 120f -> Triple(x, c, 0f)
+        normH < 180f -> Triple(0f, c, x)
+        normH < 240f -> Triple(0f, x, c)
+        normH < 300f -> Triple(x, 0f, c)
+        else         -> Triple(c, 0f, x)
+    }
+    return Color(
+        red = (r + m).coerceIn(0f, 1f),
+        green = (g + m).coerceIn(0f, 1f),
+        blue = (b + m).coerceIn(0f, 1f),
+        alpha = 1f,
     )
 }
 
-// ══ Indigo (hue 265) ══
-object IndigoPalette {
-    val darkScheme = darkColorScheme(
-        primary              = Color(0xFFB8B4FF),
-        onPrimary            = Color(0xFF1D0064),
-        primaryContainer     = Color(0xFF3A2A88),
-        onPrimaryContainer   = Color(0xFFE2DFFF),
-        secondary            = Color(0xFFC4BEDC),
-        onSecondary          = Color(0xFF2D2848),
-        secondaryContainer   = Color(0xFF443E5F),
-        onSecondaryContainer = Color(0xFFE0DAF8),
-        tertiary             = Color(0xFFE8B4C2),
-        onTertiary           = Color(0xFF48202E),
-        tertiaryContainer    = Color(0xFF623644),
-        onTertiaryContainer  = Color(0xFFFFD9E3),
-        error                = Color(0xFFE8A87A),
-        onError              = Color(0xFF4A1C00),
-        errorContainer       = Color(0xFF7A3A12),
-        onErrorContainer     = Color(0xFFFFDBCC),
-        background           = Color(0xFF0F0C16),
-        onBackground         = Color(0xFFE6E2F0),
-        surface              = Color(0xFF0F0C16),
-        onSurface            = Color(0xFFE6E2F0),
-        surfaceVariant       = Color(0xFF383244),
-        onSurfaceVariant     = Color(0xFFBCB5CC),
-        outline              = Color(0xFF847E9A),
-        outlineVariant       = Color(0xFF383244),
-        surfaceTint          = Color(0xFFB8B4FF),
-        inverseSurface       = Color(0xFFE6E2F0),
-        inverseOnSurface     = Color(0xFF1E1A2C),
-        inversePrimary       = Color(0xFF5A48B8),
-        scrim                = Color(0x8C000000),
-        surfaceBright        = Color(0xFF343046),
-        surfaceContainer     = Color(0xFF1C1828),
-        surfaceContainerHigh = Color(0xFF252230),
-        surfaceContainerHighest = Color(0xFF2F2B3A),
-        surfaceContainerLow  = Color(0xFF17141F),
-        surfaceContainerLowest = Color(0xFF0F0C16),
-        surfaceDim           = Color(0xFF0F0C16),
-    )
-
-    val lightScheme = lightColorScheme(
-        primary              = Color(0xFF5A48B8),
-        onPrimary            = Color(0xFFFFFFFF),
-        primaryContainer     = Color(0xFFE2DFFF),
-        onPrimaryContainer   = Color(0xFF15006E),
-        secondary            = Color(0xFF5E5878),
-        onSecondary          = Color(0xFFFFFFFF),
-        secondaryContainer   = Color(0xFFE0DAF8),
-        onSecondaryContainer = Color(0xFF1A1531),
-        tertiary             = Color(0xFF7B485B),
-        onTertiary           = Color(0xFFFFFFFF),
-        tertiaryContainer    = Color(0xFFFFD9E3),
-        onTertiaryContainer  = Color(0xFF300C1D),
-        error                = Color(0xFF9A5A20),
-        onError              = Color(0xFFFFFFFF),
-        errorContainer       = Color(0xFFFFDBC8),
-        onErrorContainer     = Color(0xFF3A1200),
-        background           = Color(0xFFFCF9FF),
-        onBackground         = Color(0xFF1A1728),
-        surface              = Color(0xFFFCF9FF),
-        onSurface            = Color(0xFF1A1728),
-        surfaceVariant       = Color(0xFFD8D4E8),
-        onSurfaceVariant     = Color(0xFF4C4762),
-        outline              = Color(0xFF7A768C),
-        outlineVariant       = Color(0xFFD8D4E8),
-        surfaceTint          = Color(0xFF5A48B8),
-        inverseSurface       = Color(0xFF2F2B3A),
-        inverseOnSurface     = Color(0xFFF3F0FF),
-        inversePrimary       = Color(0xFFB8B4FF),
-        scrim                = Color(0x66000000),
-        surfaceBright        = Color(0xFFFCF9FF),
-        surfaceContainer     = Color(0xFFF0ECF8),
-        surfaceContainerHigh = Color(0xFFEAE6F2),
-        surfaceContainerHighest = Color(0xFFE4E0EC),
-        surfaceContainerLow  = Color(0xFFF6F2FE),
-        surfaceContainerLowest = Color(0xFFFFFFFF),
-        surfaceDim           = Color(0xFFDCD9E8),
-    )
+fun Color.toHex(): String {
+    val r = (red * 255f).toInt().coerceIn(0, 255)
+    val g = (green * 255f).toInt().coerceIn(0, 255)
+    val b = (blue * 255f).toInt().coerceIn(0, 255)
+    return String.format(java.util.Locale.US, "#%02X%02X%02X", r, g, b)
 }
 
-// ══ Forest (hue 152) ══
-object ForestPalette {
-    val darkScheme = darkColorScheme(
-        primary              = Color(0xFF72DEBF),
-        onPrimary            = Color(0xFF003830),
-        primaryContainer     = Color(0xFF005246),
-        onPrimaryContainer   = Color(0xFFA0F5DC),
-        secondary            = Color(0xFFB2CCC6),
-        onSecondary          = Color(0xFF1E3330),
-        secondaryContainer   = Color(0xFF344A46),
-        onSecondaryContainer = Color(0xFFCEE8E2),
-        tertiary             = Color(0xFFA8C8E8),
-        onTertiary           = Color(0xFF0E3048),
-        tertiaryContainer    = Color(0xFF264762),
-        onTertiaryContainer  = Color(0xFFC4E4FF),
-        error                = Color(0xFFE8A87A),
-        onError              = Color(0xFF4A1C00),
-        errorContainer       = Color(0xFF7A3A12),
-        onErrorContainer     = Color(0xFFFFDBCC),
-        background           = Color(0xFF0C1412),
-        onBackground         = Color(0xFFDCE9E6),
-        surface              = Color(0xFF0C1412),
-        onSurface            = Color(0xFFDCE9E6),
-        surfaceVariant       = Color(0xFF2E4038),
-        onSurfaceVariant     = Color(0xFFAECBC3),
-        outline              = Color(0xFF78948E),
-        outlineVariant       = Color(0xFF2E4038),
-        surfaceTint          = Color(0xFF72DEBF),
-        inverseSurface       = Color(0xFFDCE9E6),
-        inverseOnSurface     = Color(0xFF1A2B28),
-        inversePrimary       = Color(0xFF00715F),
-        scrim                = Color(0x8C000000),
-        surfaceBright        = Color(0xFF2A3E3A),
-        surfaceContainer     = Color(0xFF171E1C),
-        surfaceContainerHigh = Color(0xFF1E2826),
-        surfaceContainerHighest = Color(0xFF253230),
-        surfaceContainerLow  = Color(0xFF141C1A),
-        surfaceContainerLowest = Color(0xFF0C1412),
-        surfaceDim           = Color(0xFF0C1412),
-    )
+fun hueToPrimaryColor(hue: Int): Color =
+    hslToColor((((hue % 360) + 360) % 360).toFloat(), 0.85f, 0.76f)
 
-    val lightScheme = lightColorScheme(
-        primary              = Color(0xFF00715F),
-        onPrimary            = Color(0xFFFFFFFF),
-        primaryContainer     = Color(0xFFA0F5DC),
-        onPrimaryContainer   = Color(0xFF002019),
-        secondary            = Color(0xFF4A6560),
-        onSecondary          = Color(0xFFFFFFFF),
-        secondaryContainer   = Color(0xFFCEE8E2),
-        onSecondaryContainer = Color(0xFF06201D),
-        tertiary             = Color(0xFF3A6480),
-        onTertiary           = Color(0xFFFFFFFF),
-        tertiaryContainer    = Color(0xFFC4E4FF),
-        onTertiaryContainer  = Color(0xFF001D30),
-        error                = Color(0xFF9A5A20),
-        onError              = Color(0xFFFFFFFF),
-        errorContainer       = Color(0xFFFFDBC8),
-        onErrorContainer     = Color(0xFF3A1200),
-        background           = Color(0xFFF4FBF8),
-        onBackground         = Color(0xFF161D1A),
-        surface              = Color(0xFFF4FBF8),
-        onSurface            = Color(0xFF161D1A),
-        surfaceVariant       = Color(0xFFCCE4DE),
-        onSurfaceVariant     = Color(0xFF3F5651),
-        outline              = Color(0xFF6E8882),
-        outlineVariant       = Color(0xFFCCE4DE),
-        surfaceTint          = Color(0xFF00715F),
-        inverseSurface       = Color(0xFF253230),
-        inverseOnSurface     = Color(0xFFEBF4F0),
-        inversePrimary       = Color(0xFF72DEBF),
-        scrim                = Color(0x66000000),
-        surfaceBright        = Color(0xFFF4FBF8),
-        surfaceContainer     = Color(0xFFE4F0ED),
-        surfaceContainerHigh = Color(0xFFDDEAE7),
-        surfaceContainerHighest = Color(0xFFD7E4E1),
-        surfaceContainerLow  = Color(0xFFEAF6F3),
-        surfaceContainerLowest = Color(0xFFFFFFFF),
-        surfaceDim           = Color(0xFFD2E0DC),
-    )
+fun hexToHue(hex: String): Int? {
+    val clean = hex.trim().removePrefix("#")
+    if (clean.length != 6) return null
+    val rgb = clean.toLongOrNull(16) ?: return null
+    val r = ((rgb shr 16) and 0xFF) / 255f
+    val g = ((rgb shr 8) and 0xFF) / 255f
+    val b = (rgb and 0xFF) / 255f
+
+    val max = maxOf(r, g, b)
+    val min = minOf(r, g, b)
+    val delta = max - min
+    if (delta == 0f) return 0
+    val hue = when (max) {
+        r -> (((g - b) / delta) % 6f) * 60f
+        g -> (((b - r) / delta) + 2f) * 60f
+        else -> (((r - g) / delta) + 4f) * 60f
+    }
+    return (((hue.toInt() % 360) + 360) % 360)
 }
 
-// ══ Clay (hue 38) ══
-object ClayPalette {
-    val darkScheme = darkColorScheme(
-        primary              = Color(0xFFFFB77A),
-        onPrimary            = Color(0xFF4A2000),
-        primaryContainer     = Color(0xFF6A3800),
-        onPrimaryContainer   = Color(0xFFFFDDBA),
-        secondary            = Color(0xFFDEC4A8),
-        onSecondary          = Color(0xFF3D2C1A),
-        secondaryContainer   = Color(0xFF56422E),
-        onSecondaryContainer = Color(0xFFFFDDBA),
-        tertiary             = Color(0xFFBFCC96),
-        onTertiary           = Color(0xFF2B350F),
-        tertiaryContainer    = Color(0xFF414C24),
-        onTertiaryContainer  = Color(0xFFDBE9B0),
-        error                = Color(0xFFE8A87A),
-        onError              = Color(0xFF4A1C00),
-        errorContainer       = Color(0xFF7A3A12),
-        onErrorContainer     = Color(0xFFFFDBCC),
-        background           = Color(0xFF170F06),
-        onBackground         = Color(0xFFEDE0D2),
-        surface              = Color(0xFF170F06),
-        onSurface            = Color(0xFFEDE0D2),
-        surfaceVariant       = Color(0xFF403422),
-        onSurfaceVariant     = Color(0xFFCFBEA6),
-        outline              = Color(0xFF988B76),
-        outlineVariant       = Color(0xFF403422),
-        surfaceTint          = Color(0xFFFFB77A),
-        inverseSurface       = Color(0xFFEDE0D2),
-        inverseOnSurface     = Color(0xFF261A0A),
-        inversePrimary       = Color(0xFF8A4A00),
-        scrim                = Color(0x8C000000),
-        surfaceBright        = Color(0xFF3A2C18),
-        surfaceContainer     = Color(0xFF1F170A),
-        surfaceContainerHigh = Color(0xFF282012),
-        surfaceContainerHighest = Color(0xFF332A1C),
-        surfaceContainerLow  = Color(0xFF1C1408),
-        surfaceContainerLowest = Color(0xFF170F06),
-        surfaceDim           = Color(0xFF170F06),
-    )
+fun colorSchemeForHue(hue: Int, dark: Boolean): ColorScheme {
+    val h = (((hue % 360) + 360) % 360).toFloat()
 
-    val lightScheme = lightColorScheme(
-        primary              = Color(0xFF8A4A00),
-        onPrimary            = Color(0xFFFFFFFF),
-        primaryContainer     = Color(0xFFFFDDBA),
-        onPrimaryContainer   = Color(0xFF2C1400),
-        secondary            = Color(0xFF775A42),
-        onSecondary          = Color(0xFFFFFFFF),
-        secondaryContainer   = Color(0xFFFFDDBA),
-        onSecondaryContainer = Color(0xFF2C180A),
-        tertiary             = Color(0xFF596339),
-        onTertiary           = Color(0xFFFFFFFF),
-        tertiaryContainer    = Color(0xFFDBE9B0),
-        onTertiaryContainer  = Color(0xFF171E02),
-        error                = Color(0xFF9A5A20),
-        onError              = Color(0xFFFFFFFF),
-        errorContainer       = Color(0xFFFFDBC8),
-        onErrorContainer     = Color(0xFF3A1200),
-        background           = Color(0xFFFFF8F2),
-        onBackground         = Color(0xFF201A12),
-        surface              = Color(0xFFFFF8F2),
-        onSurface            = Color(0xFF201A12),
-        surfaceVariant       = Color(0xFFECDDD0),
-        onSurfaceVariant     = Color(0xFF504338),
-        outline              = Color(0xFF837466),
-        outlineVariant       = Color(0xFFECDDD0),
-        surfaceTint          = Color(0xFF8A4A00),
-        inverseSurface       = Color(0xFF332A1C),
-        inverseOnSurface     = Color(0xFFFFF1E6),
-        inversePrimary       = Color(0xFFFFB77A),
-        scrim                = Color(0x66000000),
-        surfaceBright        = Color(0xFFFFF8F2),
-        surfaceContainer     = Color(0xFFF2E8DE),
-        surfaceContainerHigh = Color(0xFFEDE2D8),
-        surfaceContainerHighest = Color(0xFFE7DBD0),
-        surfaceContainerLow  = Color(0xFFF8EFE6),
-        surfaceContainerLowest = Color(0xFFFFFFFF),
-        surfaceDim           = Color(0xFFDFD3C8),
-    )
-}
+    return if (dark) {
+        val primary = hslToColor(h, 0.85f, 0.76f)
+        val primaryContainer = hslToColor(h, 0.65f, 0.28f)
+        val onPrimaryContainer = hslToColor(h, 0.85f, 0.92f)
+        val secondary = hslToColor(h, 0.35f, 0.72f)
+        val secondaryContainer = hslToColor(h, 0.30f, 0.28f)
+        val onSecondaryContainer = hslToColor(h, 0.40f, 0.90f)
+        val tertiary = hslToColor((h + 45f) % 360f, 0.60f, 0.76f)
+        val tertiaryContainer = hslToColor((h + 45f) % 360f, 0.45f, 0.30f)
+        val onTertiaryContainer = hslToColor((h + 45f) % 360f, 0.65f, 0.92f)
 
-// ─────────────────────────────────────────────────────────────
-// Utility: resolve the right palette for a given seed hue.
-// The 4 presets cover Violet(300), Indigo(265), Forest(152), Clay(38).
-// Intermediate hues snap to the nearest preset.
-// ─────────────────────────────────────────────────────────────
-// Midpoints between the four seed hues (on the 0-360 circle):
-//   Clay(38) ↔ Forest(152) = 95    Forest(152) ↔ Indigo(265) = 208
-//   Indigo(265) ↔ Violet(300) = 282  Violet(300) ↔ Clay(38+360) = 349
-fun colorSchemeForHue(hue: Int, dark: Boolean) = when {
-    hue < 95 || hue >= 349   -> if (dark) ClayPalette.darkScheme   else ClayPalette.lightScheme
-    hue in 95..208            -> if (dark) ForestPalette.darkScheme else ForestPalette.lightScheme
-    hue in 209..282           -> if (dark) IndigoPalette.darkScheme else IndigoPalette.lightScheme
-    else                      -> if (dark) VioletPalette.darkScheme else VioletPalette.lightScheme
+        darkColorScheme(
+            primary              = primary,
+            onPrimary            = Color(0xFF140824),
+            primaryContainer     = primaryContainer,
+            onPrimaryContainer   = onPrimaryContainer,
+            secondary            = secondary,
+            onSecondary          = Color(0xFF181222),
+            secondaryContainer   = secondaryContainer,
+            onSecondaryContainer = onSecondaryContainer,
+            tertiary             = tertiary,
+            onTertiary           = Color(0xFF2E101D),
+            tertiaryContainer    = tertiaryContainer,
+            onTertiaryContainer  = onTertiaryContainer,
+            error                = Color(0xFFE8A87A),   // terracotta — overspent state
+            onError              = Color(0xFF4A1C00),
+            errorContainer       = Color(0xFF7A3A12),
+            onErrorContainer     = Color(0xFFFFDBCC),
+            background           = Color(0xFF100C14),
+            onBackground         = Color(0xFFEDE6F5),
+            surface              = Color(0xFF100C14),
+            onSurface            = Color(0xFFEDE6F5),
+            surfaceVariant       = Color(0xFF262030),
+            onSurfaceVariant     = Color(0xFFC7BED4),
+            outline              = Color(0xFF7A7286),
+            outlineVariant       = Color(0xFF383144),
+            surfaceTint          = primary,
+            inverseSurface       = Color(0xFFEDE6F5),
+            inverseOnSurface     = Color(0xFF1E1828),
+            inversePrimary       = hslToColor(h, 0.70f, 0.45f),
+            scrim                = Color(0x8C000000),
+            surfaceBright        = Color(0xFF342E40),
+            surfaceContainer     = Color(0xFF1C1824),
+            surfaceContainerHigh = Color(0xFF26212F),
+            surfaceContainerHighest = Color(0xFF312B3B),
+            surfaceContainerLow  = Color(0xFF16121C),
+            surfaceContainerLowest = Color(0xFF0C0910),
+            surfaceDim           = Color(0xFF100C14),
+        )
+    } else {
+        val primary = hslToColor(h, 0.72f, 0.44f)
+        val primaryContainer = hslToColor(h, 0.85f, 0.92f)
+        val onPrimaryContainer = hslToColor(h, 0.90f, 0.16f)
+        val secondary = hslToColor(h, 0.35f, 0.42f)
+        val secondaryContainer = hslToColor(h, 0.40f, 0.90f)
+        val onSecondaryContainer = hslToColor(h, 0.45f, 0.14f)
+        val tertiary = hslToColor((h + 45f) % 360f, 0.50f, 0.42f)
+        val tertiaryContainer = hslToColor((h + 45f) % 360f, 0.65f, 0.92f)
+        val onTertiaryContainer = hslToColor((h + 45f) % 360f, 0.70f, 0.14f)
+
+        lightColorScheme(
+            primary              = primary,
+            onPrimary            = Color(0xFFFFFFFF),
+            primaryContainer     = primaryContainer,
+            onPrimaryContainer   = onPrimaryContainer,
+            secondary            = secondary,
+            onSecondary          = Color(0xFFFFFFFF),
+            secondaryContainer   = secondaryContainer,
+            onSecondaryContainer = onSecondaryContainer,
+            tertiary             = tertiary,
+            onTertiary           = Color(0xFFFFFFFF),
+            tertiaryContainer    = tertiaryContainer,
+            onTertiaryContainer  = onTertiaryContainer,
+            error                = Color(0xFF9A5A20),   // terracotta light
+            onError              = Color(0xFFFFFFFF),
+            errorContainer       = Color(0xFFFFDBC8),
+            onErrorContainer     = Color(0xFF3A1200),
+            background           = Color(0xFFFCF8FF),
+            onBackground         = Color(0xFF1C1A22),
+            surface              = Color(0xFFFCF8FF),
+            onSurface            = Color(0xFF1C1A22),
+            surfaceVariant       = Color(0xFFE5DFEC),
+            onSurfaceVariant     = Color(0xFF484452),
+            outline              = Color(0xFF797482),
+            outlineVariant       = Color(0xFFCBC4D4),
+            surfaceTint          = primary,
+            inverseSurface       = Color(0xFF322C3B),
+            inverseOnSurface     = Color(0xFFF5EEFF),
+            inversePrimary       = hslToColor(h, 0.85f, 0.76f),
+            scrim                = Color(0x66000000),
+            surfaceBright        = Color(0xFFFCF8FF),
+            surfaceContainer     = Color(0xFFF3EDF8),
+            surfaceContainerHigh = Color(0xFFEDE7F2),
+            surfaceContainerHighest = Color(0xFFE7E1ED),
+            surfaceContainerLow  = Color(0xFFF9F3FE),
+            surfaceContainerLowest = Color(0xFFFFFFFF),
+            surfaceDim           = Color(0xFFDDD7E3),
+        )
+    }
 }

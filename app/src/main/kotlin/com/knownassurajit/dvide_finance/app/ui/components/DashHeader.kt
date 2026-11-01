@@ -23,7 +23,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import java.util.Calendar
 
@@ -31,19 +33,21 @@ import java.util.Calendar
 @Composable
 fun DashHeader(
     userName: String,
+    profilePictureUri: String?,
     viewIsWeekly: Boolean,
     onViewChange: (Boolean) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenProfile: () -> Unit,
-    onAddCycle: () -> Unit,
+    onAddCycle: (() -> Unit)? = null,
     onOpenArchive: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    val greeting = when {
-        hour < 12 -> "Good morning"
-        hour < 18 -> "Good afternoon"
-        else      -> "Good evening"
+    val greeting = when (hour) {
+        in 5..11  -> "Good morning"
+        in 12..16 -> "Good afternoon"
+        in 17..21 -> "Good evening"
+        else      -> "Good night"
     }
 
     Column(
@@ -59,39 +63,34 @@ fun DashHeader(
                 .padding(start = DvideDimens.screen, end = DvideDimens.barInset),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .weight(1f)
                     .clickable { onOpenProfile() }
                     .padding(end = DvideDimens.tight)
                     .testTag("dashboard_profile_click"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    text = greeting,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                ProfileAvatar(
+                    userName = userName,
+                    imageUri = profilePictureUri,
+                    size = 40.dp,
                 )
                 Text(
-                    text = userName.ifBlank { "You" },
-                    style = MaterialTheme.typography.titleLarge,
+                    text = greeting,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+
             IconButton(onClick = onOpenArchive) {
                 Icon(
                     imageVector = CwIcons.History,
                     contentDescription = "Archive",
-                    tint = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-            IconButton(onClick = onAddCycle) {
-                Icon(
-                    imageVector = CwIcons.Plus,
-                    contentDescription = "Add Cycle",
                     tint = MaterialTheme.colorScheme.onSurface,
                 )
             }
@@ -121,33 +120,6 @@ fun DashHeader(
                     label = { Text(label) },
                 )
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SegmentedControl(
-    options: List<String>,
-    selected: Int,
-    onSelect: (Int) -> Unit,
-    small: Boolean = false,
-    modifier: Modifier = Modifier,
-) {
-    SingleChoiceSegmentedButtonRow(modifier = modifier) {
-        options.forEachIndexed { index, label ->
-            SegmentedButton(
-                selected = index == selected,
-                onClick = { onSelect(index) },
-                shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                label = {
-                    Text(
-                        text = label,
-                        style = if (small) MaterialTheme.typography.labelMedium
-                                else MaterialTheme.typography.labelLarge,
-                    )
-                },
-            )
         }
     }
 }

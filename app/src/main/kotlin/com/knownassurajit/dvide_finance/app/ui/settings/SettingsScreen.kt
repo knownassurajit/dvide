@@ -1,6 +1,7 @@
 package com.knownassurajit.dvide_finance.app.ui.settings
 
-import androidx.compose.animation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,21 +20,30 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.knownassurajit.dvide_finance.app.data.repository.AppSettings
+import com.knownassurajit.dvide_finance.app.domain.model.AppFont
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
+import com.knownassurajit.dvide_finance.app.domain.model.ExportFormat
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
 import com.knownassurajit.dvide_finance.app.ui.components.HueSlider
 import com.knownassurajit.dvide_finance.app.ui.components.PaydayCalendar
 import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeSettingsGroup
+import com.knownassurajit.dvide_finance.app.ui.theme.fontFamilyFor
+import com.knownassurajit.dvide_finance.app.ui.theme.hexToHue
+import com.knownassurajit.dvide_finance.app.ui.theme.hueToPrimaryColor
+import com.knownassurajit.dvide_finance.app.ui.theme.toHex
 
 private object SettingsSpace {
     val section = 32.dp
@@ -58,16 +68,21 @@ fun SettingsScreen(
     onRegionChange: (String) -> Unit,
     onWeekStartChange: (Int) -> Unit,
     onNumberFormatChange: (String) -> Unit,
+    onFontChange: (AppFont) -> Unit = {},
+    onShowDecimalsChange: (Boolean) -> Unit = {},
     onDarkThemeChange: (Boolean) -> Unit = { onToggleTheme() },
     onDynamicColorChange: (Boolean) -> Unit = {},
     onPaydayChange: (Int) -> Unit = {},
     onExport: () -> Unit = {},
+    onExportFormat: ((ExportFormat) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    var showFontDialog by remember { mutableStateOf(false) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showRegionDialog by remember { mutableStateOf(false) }
     var showWeekStartDialog by remember { mutableStateOf(false) }
     var showNumberFormatDialog by remember { mutableStateOf(false) }
+    var showExportFormatDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -89,9 +104,7 @@ fun SettingsScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.surface,
-        contentWindowInsets = WindowInsets.safeContent.only(
-            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
-        ),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier       = modifier,
     ) { paddingValues ->
         Column(
@@ -99,8 +112,8 @@ fun SettingsScreen(
                 .fillMaxWidth()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = DvideDimens.screenTight, vertical = SettingsSpace.screenVertical),
-            verticalArrangement = Arrangement.spacedBy(SettingsSpace.section),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             // Personal & Profile
             SettingsSection(title = "Profile") {
@@ -119,7 +132,8 @@ fun SettingsScreen(
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
                 SettingsSwitchRow(
-                    label = "Material You",
+                    label = "Chameleon mode",
+                    subLabel = "Dynamic adaptive color theming",
                     checked = settings.dynamicColor,
                     onCheckedChange = onDynamicColorChange,
                 )
@@ -144,18 +158,81 @@ fun SettingsScreen(
                         }
                     }
                 }
-                if (!settings.dynamicColor) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-                    Column(modifier = Modifier.padding(SettingsSpace.inner)) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                SettingsRow(
+                    label = "Font family",
+                    value = settings.fontOption.label,
+                    onClick = { showFontDialog = true },
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                Column(modifier = Modifier.padding(SettingsSpace.inner)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
                             text = "Brand colour",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = if (settings.dynamicColor) MaterialTheme.colorScheme.onSurface
+                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         )
-                        Spacer(modifier = Modifier.height(SettingsSpace.rowV))
-                        HueSlider(
-                            hue = settings.seedHue,
-                            onHueChange = { onSeedHueChange(it.toInt()) },
+                        if (!settings.dynamicColor) {
+                            Text(
+                                text = "Disabled",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(SettingsSpace.rowV))
+                    HueSlider(
+                        hue = settings.seedHue,
+                        onHueChange = { onSeedHueChange(it.toInt()) },
+                        enabled = settings.dynamicColor,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val currentHex = remember(settings.seedHue) { hueToPrimaryColor(settings.seedHue).toHex() }
+                    var hexInput by remember(settings.seedHue) { mutableStateOf(currentHex) }
+                    val activeColor = remember(settings.seedHue) { hueToPrimaryColor(settings.seedHue) }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(if (settings.dynamicColor) activeColor else MaterialTheme.colorScheme.surfaceContainerHighest)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                        )
+                        OutlinedTextField(
+                            value = hexInput,
+                            onValueChange = { input ->
+                                val clean = input.trim().uppercase()
+                                if (clean.length <= 7) {
+                                    hexInput = clean
+                                    val parsedHue = hexToHue(clean)
+                                    if (parsedHue != null) {
+                                        onSeedHueChange(parsedHue)
+                                    }
+                                }
+                            },
+                            enabled = settings.dynamicColor,
+                            placeholder = { Text("#RRGGBB") },
+                            label = { Text("Color hex code") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                disabledBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                disabledContainerColor = Color.Transparent,
+                                disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            ),
                         )
                     }
                 }
@@ -241,13 +318,25 @@ fun SettingsScreen(
                     value = numberFormatLabel,
                     onClick = { showNumberFormatDialog = true },
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                SettingsSwitchRow(
+                    label = "Show decimal values",
+                    checked = settings.showDecimals,
+                    onCheckedChange = onShowDecimalsChange,
+                )
             }
 
             SettingsSection(title = "Data") {
                 SettingsRow(
                     label = "Export ledger",
-                    value = "CSV",
-                    onClick = onExport,
+                    value = "Choose format",
+                    onClick = {
+                        if (onExportFormat != null) {
+                            showExportFormatDialog = true
+                        } else {
+                            onExport()
+                        }
+                    },
                 )
             }
 
@@ -260,6 +349,13 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(80.dp))
         }
+    }
+
+    if (showExportFormatDialog && onExportFormat != null) {
+        ExportFormatDialog(
+            onSelect = onExportFormat,
+            onDismiss = { showExportFormatDialog = false }
+        )
     }
 
     if (showCurrencyDialog) {
@@ -288,6 +384,13 @@ fun SettingsScreen(
             current = settings.numberFormat,
             onSelect = onNumberFormatChange,
             onDismiss = { showNumberFormatDialog = false }
+        )
+    }
+    if (showFontDialog) {
+        FontSelectDialog(
+            current = settings.fontOption,
+            onSelect = onFontChange,
+            onDismiss = { showFontDialog = false }
         )
     }
 }
@@ -356,6 +459,7 @@ fun SettingsSwitchRow(
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    subLabel: String? = null,
 ) {
     Row(
         modifier = Modifier
@@ -364,17 +468,104 @@ fun SettingsSwitchRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment     = Alignment.CenterVertically,
     ) {
-        Text(
-            text  = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text  = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            if (subLabel != null) {
+                Text(
+                    text = subLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
         )
     }
+}
+
+@Composable
+fun ExportFormatDialog(
+    onSelect: (ExportFormat) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Export ledger",
+                style = MaterialTheme.typography.titleLarge,
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "Choose your preferred export file format:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                ExportFormat.entries.forEach { format ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable {
+                                onSelect(format)
+                                onDismiss()
+                            },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = format.label,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = when (format) {
+                                        ExportFormat.CSV -> "Standard comma-separated table (.csv)"
+                                        ExportFormat.SPREADSHEET -> "Excel & Google Sheets compatible (.tsv)"
+                                        ExportFormat.MARKDOWN -> "Formatted GitHub markdown table (.md)"
+                                        ExportFormat.TEXT -> "Human-readable plain text summary (.txt)"
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Icon(
+                                imageVector = CwIcons.Export,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable
@@ -589,3 +780,69 @@ fun NumberFormatSelectDialog(
         }
     )
 }
+
+@Composable
+fun FontSelectDialog(
+    current: AppFont,
+    onSelect: (AppFont) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Font Family") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppFont.entries.forEach { font ->
+                    val isSelected = font == current
+                    Surface(
+                        onClick = {
+                            onSelect(font)
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column {
+                                Text(
+                                    text = font.label,
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontFamily = fontFamilyFor(font),
+                                        fontWeight = FontWeight.SemiBold,
+                                    ),
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = "The quick brown fox jumps · 12345",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = fontFamilyFor(font),
+                                    ),
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = CwIcons.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        }
+    )
+}
+

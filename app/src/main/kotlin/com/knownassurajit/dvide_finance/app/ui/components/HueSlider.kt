@@ -23,40 +23,48 @@ fun HueSlider(
     hue: Int,
     onHueChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     var trackWidth by remember { mutableFloatStateOf(1f) }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(38.dp),
+            .height(38.dp)
+            .then(if (!enabled) Modifier.clip(RoundedCornerShape(999.dp)) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
+        val alpha = if (enabled) 1f else 0.35f
+
         // Spectrum track
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(14.dp)
                 .clip(RoundedCornerShape(999.dp))
-                .pointerInput(Unit) {
-                    detectTapGestures { offset ->
-                        trackWidth = size.width.toFloat()
-                        val h = ((offset.x / trackWidth) * 360).toInt().coerceIn(0, 360)
-                        onHueChange(h)
-                    }
-                }
-                .pointerInput(Unit) {
-                    detectHorizontalDragGestures { change, _ ->
-                        trackWidth = size.width.toFloat()
-                        val h = ((change.position.x / trackWidth) * 360).toInt().coerceIn(0, 360)
-                        onHueChange(h)
-                    }
-                },
+                .then(
+                    if (enabled) {
+                        Modifier
+                            .pointerInput(Unit) {
+                                detectTapGestures { offset ->
+                                    trackWidth = size.width.toFloat()
+                                    val h = ((offset.x / trackWidth) * 360).toInt().coerceIn(0, 360)
+                                    onHueChange(h)
+                                }
+                            }
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures { change, _ ->
+                                    trackWidth = size.width.toFloat()
+                                    val h = ((change.position.x / trackWidth) * 360).toInt().coerceIn(0, 360)
+                                    onHueChange(h)
+                                }
+                            }
+                    } else Modifier
+                ),
         ) {
             trackWidth = size.width
-            // Full-spectrum gradient
             val stops = (0..12).map { i ->
-                (i / 12f) to Category.oklchToColor(0.65f, 0.15f, (i * 30))
+                (i / 12f) to Category.oklchToColor(0.65f, 0.15f, (i * 30)).copy(alpha = alpha)
             }.toTypedArray()
             drawRect(
                 brush = Brush.horizontalGradient(colorStops = stops),
@@ -70,14 +78,21 @@ fun HueSlider(
             trackWidth = size.width
             val cx = pct * size.width
             val cy = size.height / 2f
-            // White border
-            drawCircle(color = Color.White, radius = 16.dp.toPx(), center = Offset(cx, cy))
-            // Hue fill
-            drawCircle(
-                color  = Category.oklchToColor(0.65f, 0.15f, hue),
-                radius = 13.dp.toPx(),
-                center = Offset(cx, cy),
-            )
+            if (enabled) {
+                drawCircle(color = Color.White, radius = 16.dp.toPx(), center = Offset(cx, cy))
+                drawCircle(
+                    color  = Category.oklchToColor(0.65f, 0.15f, hue),
+                    radius = 13.dp.toPx(),
+                    center = Offset(cx, cy),
+                )
+            } else {
+                drawCircle(color = Color.Gray.copy(alpha = 0.5f), radius = 14.dp.toPx(), center = Offset(cx, cy))
+                drawCircle(
+                    color  = Color.DarkGray,
+                    radius = 11.dp.toPx(),
+                    center = Offset(cx, cy),
+                )
+            }
         }
     }
 }

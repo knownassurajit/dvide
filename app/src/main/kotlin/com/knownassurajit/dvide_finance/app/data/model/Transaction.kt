@@ -13,4 +13,6 @@ data class Transaction(
     val kind: String,           // "aside" | "expense"
     val amount: Double,
     val note: String,
+    val color: Int? = null,
+    val cycleId: Long? = null,
 )

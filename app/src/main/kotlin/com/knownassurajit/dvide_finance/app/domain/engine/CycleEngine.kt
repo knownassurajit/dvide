@@ -4,6 +4,7 @@ import com.knownassurajit.dvide_finance.app.data.model.Category
 import com.knownassurajit.dvide_finance.app.data.model.ManualCycle
 import com.knownassurajit.dvide_finance.app.data.model.Transaction
 import com.knownassurajit.dvide_finance.app.domain.model.Cycle
+import com.knownassurajit.dvide_finance.app.domain.model.ExportFormat
 import com.knownassurajit.dvide_finance.app.domain.model.Metrics
 import com.knownassurajit.dvide_finance.app.domain.model.PastCycle
 import java.time.LocalDate
@@ -34,7 +35,7 @@ object CycleEngine {
         val cycleEnded = today.isAfter(cycle.endDate)
 
         val txns  = transactions
-            .filter { inCycle(it.date, domainCycle) }
+            .filter { it.cycleId == cycle.id || (it.cycleId == null && inCycle(it.date, domainCycle)) }
             .sortedWith(compareByDescending<Transaction> { it.date }.thenByDescending { it.id })
 
         val byCategory = mutableMapOf<String, Double>()
@@ -42,9 +43,10 @@ object CycleEngine {
 
         var allocated = 0.0
         var spent     = 0.0
-        byCategory.forEach { (cat, amt) ->
-            val kind = Category.kindOf(cat, txns.firstOrNull { it.category == cat }?.kind)
-            if (kind == Category.Kind.ASIDE) allocated += amt else spent += amt
+        txns.forEach { tx ->
+            val kind = Category.kindOf(tx.category, tx.kind)
+            if (kind == Category.Kind.ASIDE) allocated += tx.amount
+            else if (tx.kind != "income") spent += tx.amount
         }
 
         val spendable      = cycle.income - allocated
@@ -208,16 +210,78 @@ object CycleEngine {
         }
     }
 
-    fun buildExportCsv(cycles: List<ManualCycle>, transactions: List<Transaction>): String {
-        val header = "date,category,kind,amount,note,cycle"
-        val rows = transactions.sortedWith(compareBy({ it.date }, { it.id })).map { tx ->
-            val cycleLabel = cycles.firstOrNull { !tx.date.isBefore(it.startDate) && !tx.date.isAfter(it.endDate) }
-                ?.let { "${it.startDate}..${it.endDate}" }
-                ?: ""
-            val note = tx.note.replace("\"", "\"\"")
-            "${tx.date},${tx.category},${tx.kind},${"%.2f".format(java.util.Locale.US, tx.amount)},\"$note\",$cycleLabel"
+    fun buildExportCsv(cycles: List<ManualCycle>, transactions: List<Transaction>): String =
+        buildExport(ExportFormat.CSV, cycles, transactions)
+
+    fun buildExport(format: ExportFormat, cycles: List<ManualCycle>, transactions: List<Transaction>): String {
+        val sortedTx = transactions.sortedWith(compareBy({ it.date }, { it.id }))
+        return when (format) {
+            ExportFormat.CSV -> {
+                val header = "date,category,kind,amount,note,cycle"
+                val rows = sortedTx.map { tx ->
+                    val cycleLabel = cycles.firstOrNull { it.id == tx.cycleId }
+                        ?: cycles.firstOrNull { !tx.date.isBefore(it.startDate) && !tx.date.isAfter(it.endDate) }
+                            ?.let { "${it.startDate}..${it.endDate}" }
+                        ?: ""
+                    val note = tx.note.replace("\"", "\"\"")
+                    "${tx.date},${tx.category},${tx.kind},${"%.2f".format(java.util.Locale.US, tx.amount)},\"$note\",$cycleLabel"
+                }
+                (listOf(header) + rows).joinToString("\n")
+            }
+            ExportFormat.SPREADSHEET -> {
+                val header = "Date\tCategory\tKind\tAmount\tNote\tCycle"
+                val rows = sortedTx.map { tx ->
+                    val cycleLabel = cycles.firstOrNull { it.id == tx.cycleId }
+                        ?: cycles.firstOrNull { !tx.date.isBefore(it.startDate) && !tx.date.isAfter(it.endDate) }
+                            ?.let { "${it.startDate}..${it.endDate}" }
+                        ?: ""
+                    "${tx.date}\t${tx.category}\t${tx.kind}\t${"%.2f".format(java.util.Locale.US, tx.amount)}\t${tx.note}\t$cycleLabel"
+                }
+                (listOf(header) + rows).joinToString("\n")
+            }
+            ExportFormat.MARKDOWN -> {
+                val header = "| Date | Category | Kind | Amount | Note | Cycle |\n|---|---|---|---|---|---|"
+                val rows = sortedTx.map { tx ->
+                    val cycleLabel = cycles.firstOrNull { it.id == tx.cycleId }
+                        ?: cycles.firstOrNull { !tx.date.isBefore(it.startDate) && !tx.date.isAfter(it.endDate) }
+                            ?.let { "${it.startDate}..${it.endDate}" }
+                        ?: ""
+                    "| ${tx.date} | ${tx.category} | ${tx.kind} | ${"%.2f".format(java.util.Locale.US, tx.amount)} | ${tx.note.replace("|", "\\|")} | $cycleLabel |"
+                }
+                (listOf(header) + rows).joinToString("\n")
+            }
+            ExportFormat.TEXT -> {
+                val sb = StringBuilder()
+                sb.appendLine("DVIDE LEDGER EXPORT")
+                sb.appendLine("Generated: ${LocalDate.now()}")
+                sb.appendLine("-".repeat(76))
+                sb.appendLine(String.format(java.util.Locale.US, "%-12s %-14s %-10s %-12s %s", "Date", "Category", "Kind", "Amount", "Note"))
+                sb.appendLine("-".repeat(76))
+                sortedTx.forEach { tx ->
+                    sb.appendLine(
+                        String.format(
+                            java.util.Locale.US,
+                            "%-12s %-14s %-10s %-12.2f %s",
+                            tx.date.toString(),
+                            tx.category,
+                            tx.kind,
+                            tx.amount,
+                            tx.note,
+                        )
+                    )
+                }
+                sb.appendLine("-".repeat(76))
+                sb.appendLine("Total entries: ${sortedTx.size}")
+                sb.toString()
+            }
         }
-        return (listOf(header) + rows).joinToString("\n")
+    }
+
+    fun buildCycleExport(format: ExportFormat, cycle: ManualCycle, transactions: List<Transaction>): String {
+        val cycleTx = transactions.filter {
+            it.cycleId == cycle.id || (it.cycleId == null && !it.date.isBefore(cycle.startDate) && !it.date.isAfter(cycle.endDate))
+        }
+        return buildExport(format, listOf(cycle), cycleTx)
     }
 
     private fun inCycle(date: LocalDate, cycle: Cycle): Boolean =

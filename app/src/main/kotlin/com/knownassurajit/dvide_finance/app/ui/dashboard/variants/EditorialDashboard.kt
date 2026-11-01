@@ -40,6 +40,7 @@ fun EditorialDashboard(
     highlightId: Long?,
     onOpenCycle: () -> Unit,
     onDeleteTransaction: (Transaction) -> Unit,
+    onEditTransaction: ((Transaction) -> Unit)? = null,
     onAddTransaction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -100,18 +101,20 @@ fun EditorialDashboard(
                     )
                     MoneyText(
                         text = buildAnnotatedString {
-                            withStyle(SpanStyle(fontSize = 22.sp, fontWeight = FontWeight.SemiBold)) {
+                            withStyle(SpanStyle(fontSize = 32.sp, fontWeight = FontWeight.SemiBold)) {
                                 append(sp.symbol)
                             }
                             append(sp.whole)
-                            withStyle(
-                                SpanStyle(
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-                                ),
-                            ) {
-                                append("${sp.decimalSeparator}${sp.frac}")
+                            if (sp.frac.isNotEmpty()) {
+                                withStyle(
+                                    SpanStyle(
+                                        fontSize = 26.sp,
+                                        fontWeight = FontWeight.Normal,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                                    ),
+                                ) {
+                                    append("${sp.decimalSeparator}${sp.frac}")
+                                }
                             }
                         },
                         style = MaterialTheme.typography.displayLarge.copy(
@@ -203,6 +206,7 @@ fun EditorialDashboard(
             groupByWeek = viewIsWeekly,
             highlightId = highlightId,
             onDeleteTransaction = onDeleteTransaction,
+            onEditTransaction = onEditTransaction,
             onAddTransaction = onAddTransaction,
             modifier = Modifier.padding(horizontal = DvideDimens.screen),
         )

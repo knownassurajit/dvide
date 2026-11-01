@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,6 +48,7 @@ fun GaugeDashboard(
     highlightId: Long?,
     onOpenCycle: () -> Unit,
     onDeleteTransaction: (Transaction) -> Unit,
+    onEditTransaction: ((Transaction) -> Unit)? = null,
     onAddTransaction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -86,17 +88,45 @@ fun GaugeDashboard(
             color = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 0.dp,
         ) {
-            Box {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(DvideDimens.card),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(DvideDimens.item),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(DvideDimens.card),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(DvideDimens.item),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    BoxWithConstraints(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center,
+                    Text(
+                        text = metrics.cycle.label(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = "${metrics.cycle.remaining}d left",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Icon(
+                            imageVector = CwIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
                     ) {
                         val ring = maxWidth.coerceAtMost(240.dp).coerceAtLeast(168.dp)
                         val stroke = if (ring < 200.dp) 14.dp else 18.dp
@@ -157,16 +187,6 @@ fun GaugeDashboard(
                         )
                     }
                 }
-
-                Icon(
-                    imageVector = CwIcons.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(DvideDimens.item),
-                )
-            }
         }
 
         TransactionTimeline(
@@ -175,6 +195,7 @@ fun GaugeDashboard(
             highlightId = highlightId,
             compact = true,
             onDeleteTransaction = onDeleteTransaction,
+            onEditTransaction = onEditTransaction,
             onAddTransaction = onAddTransaction,
             modifier = Modifier.padding(horizontal = DvideDimens.screen),
         )

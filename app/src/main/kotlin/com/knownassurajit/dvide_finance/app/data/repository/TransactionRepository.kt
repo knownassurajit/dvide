@@ -14,6 +14,8 @@ class TransactionRepository @Inject constructor(
 
     suspend fun insert(tx: Transaction): Long = dao.insert(tx)
 
+    suspend fun update(tx: Transaction) = dao.update(tx)
+
     suspend fun insertAll(txns: List<Transaction>) = dao.insertAll(txns)
 
     suspend fun delete(tx: Transaction) = dao.delete(tx)

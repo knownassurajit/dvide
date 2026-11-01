@@ -6,10 +6,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,16 +21,20 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -37,7 +44,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -47,9 +58,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.knownassurajit.dvide_finance.app.data.model.ManualCycle
+import com.knownassurajit.dvide_finance.app.domain.model.ExportFormat
+import com.knownassurajit.dvide_finance.app.data.model.Transaction
 import com.knownassurajit.dvide_finance.app.ui.MainViewModel
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
 import com.knownassurajit.dvide_finance.app.ui.cycle.AddCycleSheet
+import com.knownassurajit.dvide_finance.app.ui.cycle.AddFundsSheet
 import com.knownassurajit.dvide_finance.app.ui.cycle.ArchiveScreen
 import com.knownassurajit.dvide_finance.app.ui.cycle.CycleDetailScreen
 import com.knownassurajit.dvide_finance.app.ui.dashboard.DashboardScreen
@@ -58,8 +72,10 @@ import com.knownassurajit.dvide_finance.app.ui.onboarding.OnboardingScreen
 import com.knownassurajit.dvide_finance.app.ui.settings.ProfileScreen
 import com.knownassurajit.dvide_finance.app.ui.settings.SettingsScreen
 import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
+import com.knownassurajit.dvide_finance.app.ui.theme.M3XMotion
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeSheet
 import com.knownassurajit.dvide_finance.app.ui.theme.dvideBottomBarPadding
+import com.knownassurajit.dvide_finance.app.ui.theme.m3xPressEffect
 
 private const val ROUTE_HOME     = "home"
 private const val ROUTE_SETTINGS = "settings"
@@ -106,25 +122,38 @@ fun DvideNavHost(
 
     var showAddSheet by remember { mutableStateOf(false) }
     var showAddCycleSheet by remember { mutableStateOf(false) }
+    var showAddFundsSheet by remember { mutableStateOf(false) }
+    var showFabActionsSheet by remember { mutableStateOf(false) }
     var editingCycle by remember { mutableStateOf<ManualCycle?>(null) }
+    var editingTransaction by remember { mutableStateOf<Transaction?>(null) }
 
-    val enterPush  = slideInHorizontally(spring(stiffness = 300f)) { it }  + fadeIn()
-    val exitPush   = slideOutHorizontally(spring(stiffness = 300f)) { -it / 4 } + fadeOut()
-    val enterPop   = fadeIn()
-    val exitPop    = slideOutHorizontally(spring(stiffness = 300f)) { it } + fadeOut()
+    val enterPush = M3XMotion.enterPush()
+    val exitPush  = M3XMotion.exitPush()
+    val enterPop  = M3XMotion.enterPop()
+    val exitPop   = M3XMotion.exitPop()
 
     fun openCycle(cycleId: Long) {
         navController.navigate("cycle/$cycleId")
     }
 
-    fun shareExport() {
-        val csv = viewModel.exportCsv()
+    fun shareExport(format: ExportFormat = ExportFormat.CSV) {
+        val content = viewModel.exportLedger(format)
         val send = Intent(Intent.ACTION_SEND).apply {
-            type = "text/csv"
-            putExtra(Intent.EXTRA_SUBJECT, "DVIDE ledger")
-            putExtra(Intent.EXTRA_TEXT, csv)
+            type = format.mimeType
+            putExtra(Intent.EXTRA_SUBJECT, "DVIDE ledger (${format.extension.uppercase()})")
+            putExtra(Intent.EXTRA_TEXT, content)
         }
-        context.startActivity(Intent.createChooser(send, "Export ledger"))
+        context.startActivity(Intent.createChooser(send, "Export ledger (${format.label})"))
+    }
+
+    fun shareCycleExport(cycleId: Long, cycleLabel: String?, format: ExportFormat = ExportFormat.CSV) {
+        val content = viewModel.exportCycle(cycleId, format) ?: return
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = format.mimeType
+            putExtra(Intent.EXTRA_SUBJECT, "DVIDE cycle - ${cycleLabel ?: "cycle-$cycleId"} (${format.extension.uppercase()})")
+            putExtra(Intent.EXTRA_TEXT, content)
+        }
+        context.startActivity(Intent.createChooser(send, "Export cycle (${format.label})"))
     }
 
     Scaffold(
@@ -134,14 +163,39 @@ fun DvideNavHost(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             if (currentRoute == ROUTE_HOME && metrics != null) {
-                ExtendedFloatingActionButton(
-                    modifier = Modifier.padding(bottom = dvideBottomBarPadding()),
-                    onClick = { showAddSheet = true },
-                    icon = { Icon(CwIcons.Plus, contentDescription = null) },
-                    text = { Text("Add entry") },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                Surface(
+                    modifier = Modifier
+                        .padding(bottom = dvideBottomBarPadding())
+                        .m3xPressEffect()
+                        .clip(CircleShape)
+                        .combinedClickable(
+                            role = Role.Button,
+                            onClickLabel = "Add entry",
+                            onLongClickLabel = "More options",
+                            onClick = {
+                                editingTransaction = null
+                                showAddSheet = true
+                            },
+                            onLongClick = {
+                                showFabActionsSheet = true
+                            },
+                        ),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                    shadowElevation = 6.dp,
+                ) {
+                    Box(
+                        modifier = Modifier.size(56.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = CwIcons.Plus,
+                            contentDescription = "Add entry",
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
             }
         },
     ) { paddingValues ->
@@ -165,6 +219,7 @@ fun DvideNavHost(
                         onViewChange  = viewModel::setViewIsWeekly,
                         userName      = settings.userName,
                         highlightId   = highlightId,
+                        profilePictureUri = settings.profilePictureUri,
                         onOpenSettings = { navController.navigate(ROUTE_SETTINGS) },
                         onOpenCycle    = {
                             val id = metrics?.sourceCycleId
@@ -172,8 +227,15 @@ fun DvideNavHost(
                         },
                         onOpenProfile  = { navController.navigate(ROUTE_PROFILE) },
                         onDeleteTransaction = viewModel::deleteTransaction,
+                        onEditTransaction = { tx ->
+                            editingTransaction = tx
+                            showAddSheet = true
+                        },
                         onAddCycle = { showAddCycleSheet = true },
-                        onAddTransaction = { showAddSheet = true },
+                        onAddTransaction = {
+                            editingTransaction = null
+                            showAddSheet = true
+                        },
                         onOpenArchive = { navController.navigate(ROUTE_ARCHIVE) },
                     )
                 }
@@ -193,13 +255,16 @@ fun DvideNavHost(
                         onDynamicColorChange = viewModel::setDynamicColor,
                         onVariantChange     = viewModel::setVariant,
                         onSeedHueChange     = viewModel::setSeedHue,
+                        onShowDecimalsChange = viewModel::setShowDecimals,
                         onOpenProfile       = { navController.navigate(ROUTE_PROFILE) },
                         onCurrencyChange    = viewModel::setCurrencyCode,
                         onRegionChange      = viewModel::setRegionCode,
                         onWeekStartChange   = viewModel::setWeekStartDay,
                         onNumberFormatChange = viewModel::setNumberFormat,
+                        onFontChange        = viewModel::setFontOption,
                         onPaydayChange      = viewModel::setPayday,
-                        onExport            = { shareExport() },
+                        onExport            = { shareExport(ExportFormat.CSV) },
+                        onExportFormat      = { format: ExportFormat -> shareExport(format) },
                     )
                 }
 
@@ -212,7 +277,7 @@ fun DvideNavHost(
                 ) {
                     ProfileScreen(
                         settings        = settings,
-                        onSave          = viewModel::updateProfile,
+                        onSave          = { name, email, pic -> viewModel.updateProfile(name, email, pic) },
                         onClose         = { navController.popBackStack() },
                     )
                 }
@@ -265,6 +330,10 @@ fun DvideNavHost(
                                 viewModel.deleteCycle(cycle)
                                 navController.popBackStack()
                             }
+                        },
+                        onExport   = {
+                            val label = cycle?.let { "${it.startDate} – ${it.endDate}" }
+                            shareCycleExport(cycleId, label)
                         },
                     )
                 }
@@ -328,7 +397,10 @@ fun DvideNavHost(
 
     if (showAddSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showAddSheet = false },
+            onDismissRequest = {
+                showAddSheet = false
+                editingTransaction = null
+            },
             sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             shape            = ShapeSheet,
             containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -350,23 +422,216 @@ fun DvideNavHost(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text  = "New entry",
+                    text  = if (editingTransaction != null) "Edit entry" else "New entry",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                IconButton(onClick = { showAddSheet = false }) {
+                IconButton(onClick = {
+                    showAddSheet = false
+                    editingTransaction = null
+                }) {
                     Icon(CwIcons.Close, contentDescription = "Close")
                 }
             }
 
             AddTransactionSheet(
+                cycleId = currentCycle?.id,
                 cycleStart = currentCycle?.startDate,
                 cycleEnd = currentCycle?.endDate,
+                editing = editingTransaction,
+                onUpdate = { updatedTx ->
+                    viewModel.updateTransaction(updatedTx)
+                    showAddSheet = false
+                    editingTransaction = null
+                },
                 onAdd = { tx ->
                     viewModel.addTransaction(tx)
                     showAddSheet = false
+                    editingTransaction = null
                 },
             )
+            }
+        }
+    }
+
+    if (showFabActionsSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showFabActionsSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            shape = ShapeSheet,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            contentWindowInsets = { WindowInsets.safeContent.only(WindowInsetsSides.Bottom) },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = DvideDimens.screen)
+                    .padding(bottom = DvideDimens.section),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = "Quick actions",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable {
+                            showFabActionsSheet = false
+                            editingTransaction = null
+                            showAddSheet = true
+                        },
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Icon(
+                            imageVector = CwIcons.Plus,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Column {
+                            Text(
+                                text = "New entry",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = "Log an expense or set-aside allocation",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable {
+                            showFabActionsSheet = false
+                            showAddFundsSheet = true
+                        },
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Icon(
+                            imageVector = CwIcons.Wallet,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Column {
+                            Text(
+                                text = "Add funds to cycle",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = "Top up your spendable pool with bonus or income",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable {
+                            showFabActionsSheet = false
+                            editingCycle = null
+                            showAddCycleSheet = true
+                        },
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Icon(
+                            imageVector = CwIcons.Calendar,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Column {
+                            Text(
+                                text = "New pay cycle",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = "Configure next salary cycle dates and income",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAddFundsSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddFundsSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            shape = ShapeSheet,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            contentWindowInsets = { WindowInsets.safeContent.only(WindowInsetsSides.Bottom) },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding(),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = DvideDimens.screen, end = DvideDimens.barInset),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Add funds to cycle",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    IconButton(onClick = { showAddFundsSheet = false }) {
+                        Icon(CwIcons.Close, contentDescription = "Close")
+                    }
+                }
+                AddFundsSheet(
+                    onAddFunds = { amount, note ->
+                        viewModel.addFundsToCurrentCycle(amount, note)
+                        showAddFundsSheet = false
+                    },
+                )
             }
         }
     }

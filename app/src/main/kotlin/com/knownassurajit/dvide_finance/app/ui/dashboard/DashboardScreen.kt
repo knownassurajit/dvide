@@ -33,7 +33,9 @@ import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
 import com.knownassurajit.dvide_finance.app.ui.components.DashHeader
 import com.knownassurajit.dvide_finance.app.ui.dashboard.variants.CardsDashboard
 import com.knownassurajit.dvide_finance.app.ui.dashboard.variants.EditorialDashboard
+import com.knownassurajit.dvide_finance.app.ui.dashboard.variants.FocusDashboard
 import com.knownassurajit.dvide_finance.app.ui.dashboard.variants.GaugeDashboard
+import com.knownassurajit.dvide_finance.app.ui.dashboard.variants.WaterfallDashboard
 import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeCommitBtn
 import com.knownassurajit.dvide_finance.app.ui.theme.dvideBottomBars
@@ -50,22 +52,25 @@ fun DashboardScreen(
     onOpenCycle: () -> Unit,
     onOpenProfile: () -> Unit,
     onDeleteTransaction: (Transaction) -> Unit,
+    onEditTransaction: ((Transaction) -> Unit)? = null,
     onAddCycle: () -> Unit,
     onAddTransaction: () -> Unit,
     onOpenArchive: () -> Unit,
+    profilePictureUri: String? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier.fillMaxSize(),
     ) {
         DashHeader(
-            userName       = userName,
-            viewIsWeekly   = viewIsWeekly,
-            onViewChange   = onViewChange,
-            onOpenSettings = onOpenSettings,
-            onOpenProfile  = onOpenProfile,
-            onAddCycle     = onAddCycle,
-            onOpenArchive  = onOpenArchive,
+            userName          = userName,
+            profilePictureUri = profilePictureUri,
+            viewIsWeekly      = viewIsWeekly,
+            onViewChange      = onViewChange,
+            onOpenSettings    = onOpenSettings,
+            onOpenProfile     = onOpenProfile,
+            onAddCycle        = onAddCycle,
+            onOpenArchive     = onOpenArchive,
         )
 
         if (metrics == null) {
@@ -98,6 +103,7 @@ fun DashboardScreen(
                             highlightId = highlightId,
                             onOpenCycle = onOpenCycle,
                             onDeleteTransaction = onDeleteTransaction,
+                            onEditTransaction = onEditTransaction,
                             onAddTransaction = onAddTransaction,
                         )
                         DashboardVariant.GAUGE -> GaugeDashboard(
@@ -107,6 +113,7 @@ fun DashboardScreen(
                             highlightId = highlightId,
                             onOpenCycle = onOpenCycle,
                             onDeleteTransaction = onDeleteTransaction,
+                            onEditTransaction = onEditTransaction,
                             onAddTransaction = onAddTransaction,
                         )
                         DashboardVariant.CARDS -> CardsDashboard(
@@ -116,6 +123,27 @@ fun DashboardScreen(
                             highlightId = highlightId,
                             onOpenCycle = onOpenCycle,
                             onDeleteTransaction = onDeleteTransaction,
+                            onEditTransaction = onEditTransaction,
+                            onAddTransaction = onAddTransaction,
+                        )
+                        DashboardVariant.WATERFALL -> WaterfallDashboard(
+                            metrics     = metrics,
+                            viewIsWeekly = viewIsWeekly,
+                            onViewChange = onViewChange,
+                            highlightId = highlightId,
+                            onOpenCycle = onOpenCycle,
+                            onDeleteTransaction = onDeleteTransaction,
+                            onEditTransaction = onEditTransaction,
+                            onAddTransaction = onAddTransaction,
+                        )
+                        DashboardVariant.FOCUS -> FocusDashboard(
+                            metrics     = metrics,
+                            viewIsWeekly = viewIsWeekly,
+                            onViewChange = onViewChange,
+                            highlightId = highlightId,
+                            onOpenCycle = onOpenCycle,
+                            onDeleteTransaction = onDeleteTransaction,
+                            onEditTransaction = onEditTransaction,
                             onAddTransaction = onAddTransaction,
                         )
                     }

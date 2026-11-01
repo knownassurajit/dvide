@@ -1,0 +1,33 @@
+---
+description: "Project identity and operating intent for dvide (Cyclewise)"
+alwaysApply: true
+---
+
+# dvide (Cyclewise)
+
+Salary-cycle personal finance tracker. Money flows through one waterfall: Income − Set aside = Spendable − Spent = Balance (safe-to-spend per day).
+
+Package: com.knownassurajit.dvide_finance.app. Source dirs remain com/dvide/cyclewise/.
+Keep the waterfall engine consistent across Editorial, Gauge, and Cards dashboards.
+Do not rename the public product (Cyclewise) when changing code. Load the material-design skill for M3 Expressive UI.
+
+## Stack
+
+Kotlin 2.1 · Compose · Material 3 Expressive · MVVM/UDF · Hilt · Room · DataStore · minSdk 26 / targetSdk 35.
+
+## Verify
+
+`./gradlew assembleDebug | test | lintDebug`
+
+## ECC workflow
+
+1. Plan non-trivial work with the planner agent / plan skill.
+2. Implement with tests first (`tdd-workflow`).
+3. Review with `code-reviewer` and `security-reviewer` before merge-level changes.
+4. Keep secrets out of prompts and commits. Prefer small, reviewable diffs.
+
+## ECC install notes
+
+- Language rules are glob-scoped; only matching files should pull them in.
+- After install, `.cursor/rules` were converted to Cursor `globs`/`alwaysApply`. `ecc doctor` may report drift; do not `ecc repair` those rule files just to clear the warning.
+- Cursor hooks live in `.cursor/hooks.json` and must resolve scripts under `.cursor/scripts/hooks/`.

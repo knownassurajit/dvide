@@ -1,5 +1,6 @@
 package com.knownassurajit.dvide_finance.app.ui
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.knownassurajit.dvide_finance.app.data.model.ManualCycle
@@ -9,11 +10,14 @@ import com.knownassurajit.dvide_finance.app.data.repository.CycleRepository
 import com.knownassurajit.dvide_finance.app.data.repository.SettingsRepository
 import com.knownassurajit.dvide_finance.app.data.repository.TransactionRepository
 import com.knownassurajit.dvide_finance.app.domain.engine.CycleEngine
+import com.knownassurajit.dvide_finance.app.domain.model.AppFont
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
 import com.knownassurajit.dvide_finance.app.domain.model.Metrics
 import com.knownassurajit.dvide_finance.app.domain.model.PastCycle
 import com.knownassurajit.dvide_finance.app.ui.entry.NewTransaction
+import com.knownassurajit.dvide_finance.app.widget.DvideWidgetProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +34,14 @@ class MainViewModel @Inject constructor(
     private val transactionRepo: TransactionRepository,
     private val settingsRepo: SettingsRepository,
     private val cycleRepo: CycleRepository,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
+
+    private fun notifyWidget() {
+        try {
+            DvideWidgetProvider.updateAll(context)
+        } catch (_: Exception) {}
+    }
 
     private val today: LocalDate get() = LocalDate.now()
 
@@ -96,6 +107,7 @@ class MainViewModel @Inject constructor(
                 )
             )
             settingsRepo.markSeeded()
+            notifyWidget()
         }
     }
 
@@ -108,24 +120,69 @@ class MainViewModel @Inject constructor(
                     kind     = newTx.kind,
                     amount   = newTx.amount,
                     note     = newTx.note,
+                    color    = newTx.color,
+                    cycleId  = newTx.cycleId ?: currentCycle.value?.id,
                 )
             )
             _highlightId.value = id
+            notifyWidget()
             delay(1_400)
             _highlightId.value = null
         }
     }
 
+    fun addFundsToCurrentCycle(amount: Double, note: String = "Top-up balance") {
+        val cycle = currentCycle.value ?: return
+        viewModelScope.launch {
+            val updated = cycle.copy(income = cycle.income + amount)
+            cycleRepo.update(updated)
+            val txId = transactionRepo.insert(
+                Transaction(
+                    date = today,
+                    category = "income",
+                    kind = "income",
+                    amount = amount,
+                    note = note.ifBlank { "Top-up balance" },
+                    cycleId = cycle.id,
+                )
+            )
+            _highlightId.value = txId
+            notifyWidget()
+            delay(1_400)
+            _highlightId.value = null
+        }
+    }
+
+    fun updateTransaction(tx: Transaction) {
+        viewModelScope.launch {
+            transactionRepo.update(tx)
+            notifyWidget()
+        }
+    }
+
+    fun setFontOption(font: AppFont) {
+        viewModelScope.launch { settingsRepo.setFontOption(font) }
+    }
+
     fun addCycle(cycle: ManualCycle) {
-        viewModelScope.launch { cycleRepo.insert(cycle) }
+        viewModelScope.launch {
+            cycleRepo.insert(cycle)
+            notifyWidget()
+        }
     }
 
     fun updateCycle(cycle: ManualCycle) {
-        viewModelScope.launch { cycleRepo.update(cycle) }
+        viewModelScope.launch {
+            cycleRepo.update(cycle)
+            notifyWidget()
+        }
     }
 
     fun deleteCycle(cycle: ManualCycle) {
-        viewModelScope.launch { cycleRepo.delete(cycle) }
+        viewModelScope.launch {
+            cycleRepo.delete(cycle)
+            notifyWidget()
+        }
     }
 
     fun toggleTheme() {
@@ -152,23 +209,35 @@ class MainViewModel @Inject constructor(
         _viewIsWeekly.value = weekly
     }
 
-    fun updateProfile(name: String, email: String) {
+    fun updateProfile(name: String, email: String, profilePicUri: String? = null) {
         viewModelScope.launch {
             settingsRepo.setUserName(name)
             settingsRepo.setUserEmail(email)
+            if (profilePicUri != null || settings.value.profilePictureUri != null) {
+                settingsRepo.setProfilePictureUri(profilePicUri)
+            }
         }
     }
 
     fun deleteTransaction(tx: Transaction) {
-        viewModelScope.launch { transactionRepo.delete(tx) }
+        viewModelScope.launch {
+            transactionRepo.delete(tx)
+            notifyWidget()
+        }
     }
 
     fun setCurrencyCode(code: String) {
-        viewModelScope.launch { settingsRepo.setCurrencyCode(code) }
+        viewModelScope.launch {
+            settingsRepo.setCurrencyCode(code)
+            notifyWidget()
+        }
     }
 
     fun setRegionCode(code: String) {
-        viewModelScope.launch { settingsRepo.setRegionCode(code) }
+        viewModelScope.launch {
+            settingsRepo.setRegionCode(code)
+            notifyWidget()
+        }
     }
 
     fun setWeekStartDay(day: Int) {
@@ -176,7 +245,21 @@ class MainViewModel @Inject constructor(
     }
 
     fun setNumberFormat(format: String) {
-        viewModelScope.launch { settingsRepo.setNumberFormat(format) }
+        viewModelScope.launch {
+            settingsRepo.setNumberFormat(format)
+            notifyWidget()
+        }
+    }
+
+    fun setShowDecimals(show: Boolean) {
+        viewModelScope.launch {
+            settingsRepo.setShowDecimals(show)
+            notifyWidget()
+        }
+    }
+
+    fun setProfilePictureUri(uri: String?) {
+        viewModelScope.launch { settingsRepo.setProfilePictureUri(uri) }
     }
 
     fun setPayday(day: Int) {
@@ -191,4 +274,12 @@ class MainViewModel @Inject constructor(
     fun cycleById(cycleId: Long): ManualCycle? = cycles.value.firstOrNull { it.id == cycleId }
 
     fun exportCsv(): String = CycleEngine.buildExportCsv(cycles.value, transactions.value)
+
+    fun exportLedger(format: com.knownassurajit.dvide_finance.app.domain.model.ExportFormat): String =
+        CycleEngine.buildExport(format, cycles.value, transactions.value)
+
+    fun exportCycle(cycleId: Long, format: com.knownassurajit.dvide_finance.app.domain.model.ExportFormat = com.knownassurajit.dvide_finance.app.domain.model.ExportFormat.CSV): String? {
+        val cycle = cycles.value.firstOrNull { it.id == cycleId } ?: return null
+        return CycleEngine.buildCycleExport(format, cycle, transactions.value)
+    }
 }

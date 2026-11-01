@@ -2,6 +2,7 @@ package com.knownassurajit.dvide_finance.app.data.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
+import com.knownassurajit.dvide_finance.app.domain.model.AppFont
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -25,8 +26,11 @@ class SettingsRepository @Inject constructor(
         val KEY_REGION_CODE      = stringPreferencesKey("region_code")
         val KEY_WEEK_START_DAY   = intPreferencesKey("week_start_day")
         val KEY_NUMBER_FORMAT    = stringPreferencesKey("number_format")
+        val KEY_SHOW_DECIMALS    = booleanPreferencesKey("show_decimals")
         val KEY_DYNAMIC_COLOR    = booleanPreferencesKey("dynamic_color")
         val KEY_PAYDAY           = intPreferencesKey("payday")
+        val KEY_FONT_OPTION      = stringPreferencesKey("font_option")
+        val KEY_PROFILE_PICTURE_URI = stringPreferencesKey("profile_picture_uri")
 
         private fun defaultCurrencyCode(): String {
             return try {
@@ -51,13 +55,16 @@ class SettingsRepository @Inject constructor(
                 dashboardVariant = DashboardVariant.fromKey(prefs[KEY_DASHBOARD_VARIANT] ?: "editorial"),
                 userName         = prefs[KEY_USER_NAME]         ?: "",
                 userEmail        = prefs[KEY_USER_EMAIL]        ?: "",
+                profilePictureUri = prefs[KEY_PROFILE_PICTURE_URI],
                 seeded           = prefs[KEY_SEEDED]            ?: false,
                 currencyCode     = prefs[KEY_CURRENCY_CODE]     ?: defaultCurrencyCode(),
                 regionCode       = prefs[KEY_REGION_CODE]       ?: defaultRegionCode(),
                 weekStartDay     = prefs[KEY_WEEK_START_DAY]     ?: 2, // Monday
                 numberFormat     = prefs[KEY_NUMBER_FORMAT]     ?: "DEFAULT",
+                showDecimals     = prefs[KEY_SHOW_DECIMALS]     ?: true,
                 dynamicColor     = prefs[KEY_DYNAMIC_COLOR]     ?: false,
                 payday           = prefs[KEY_PAYDAY]            ?: 25,
+                fontOption       = AppFont.fromKey(prefs[KEY_FONT_OPTION]),
             )
         }
 
@@ -73,6 +80,11 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setUserEmail(email: String) = dataStore.edit { it[KEY_USER_EMAIL] = email }
 
+    suspend fun setProfilePictureUri(uri: String?) = dataStore.edit {
+        if (uri != null) it[KEY_PROFILE_PICTURE_URI] = uri
+        else it.remove(KEY_PROFILE_PICTURE_URI)
+    }
+
     suspend fun markSeeded() = dataStore.edit { it[KEY_SEEDED] = true }
 
     suspend fun setCurrencyCode(code: String) = dataStore.edit { it[KEY_CURRENCY_CODE] = code }
@@ -83,9 +95,13 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setNumberFormat(format: String) = dataStore.edit { it[KEY_NUMBER_FORMAT] = format }
 
+    suspend fun setShowDecimals(show: Boolean) = dataStore.edit { it[KEY_SHOW_DECIMALS] = show }
+
     suspend fun setDynamicColor(enabled: Boolean) = dataStore.edit { it[KEY_DYNAMIC_COLOR] = enabled }
 
     suspend fun setPayday(day: Int) = dataStore.edit { it[KEY_PAYDAY] = day.coerceIn(1, 31) }
+
+    suspend fun setFontOption(font: AppFont) = dataStore.edit { it[KEY_FONT_OPTION] = font.key }
 }
 
 data class AppSettings(
@@ -94,11 +110,14 @@ data class AppSettings(
     val dashboardVariant: DashboardVariant = DashboardVariant.EDITORIAL,
     val userName: String         = "",
     val userEmail: String        = "",
+    val profilePictureUri: String? = null,
     val seeded: Boolean          = false,
     val currencyCode: String     = "GBP",
     val regionCode: String       = "GB",
     val weekStartDay: Int        = 2, // Monday
     val numberFormat: String     = "DEFAULT",
+    val showDecimals: Boolean    = true,
     val dynamicColor: Boolean    = false,
     val payday: Int              = 25,
+    val fontOption: AppFont      = AppFont.GOOGLE_SANS,
 )

@@ -3,7 +3,9 @@
 enum class DashboardVariant(val key: String, val label: String) {
     EDITORIAL("editorial", "Editorial"),
     GAUGE    ("gauge",     "Gauge"),
-    CARDS    ("cards",     "Cards");
+    CARDS    ("cards",     "Cards"),
+    WATERFALL("waterfall", "Waterfall"),
+    FOCUS    ("focus",     "Focus");
 
     companion object {
         fun fromKey(key: String): DashboardVariant =

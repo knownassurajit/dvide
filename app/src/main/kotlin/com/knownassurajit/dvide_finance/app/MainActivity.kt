@@ -31,6 +31,8 @@ class MainActivity : ComponentActivity() {
                 regionCode   = settings.regionCode,
                 weekStartDay = settings.weekStartDay,
                 numberFormat = settings.numberFormat,
+                showDecimals = settings.showDecimals,
+                fontOption   = settings.fontOption,
             ) {
                 DvideNavHost(viewModel = viewModel)
             }

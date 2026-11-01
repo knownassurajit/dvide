@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.sp
 import com.knownassurajit.dvide_finance.app.data.model.Transaction
 import com.knownassurajit.dvide_finance.app.domain.model.Metrics
 import com.knownassurajit.dvide_finance.app.ui.components.AllocationBar
-import com.knownassurajit.dvide_finance.app.ui.components.CycleProgressBar
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
 import com.knownassurajit.dvide_finance.app.ui.components.MoneyText
 import com.knownassurajit.dvide_finance.app.ui.components.TransactionTimeline
@@ -47,6 +46,7 @@ fun CardsDashboard(
     highlightId: Long?,
     onOpenCycle: () -> Unit,
     onDeleteTransaction: (Transaction) -> Unit,
+    onEditTransaction: ((Transaction) -> Unit)? = null,
     onAddTransaction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -79,17 +79,21 @@ fun CardsDashboard(
             shape = cardShape,
             color = MaterialTheme.colorScheme.primaryContainer,
         ) {
-            Box {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            start = DvideDimens.card,
-                            end = DvideDimens.card,
-                            top = DvideDimens.card,
-                            bottom = DvideDimens.item,
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(DvideDimens.tight),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = DvideDimens.card,
+                        end = DvideDimens.card,
+                        top = DvideDimens.card,
+                        bottom = DvideDimens.item,
+                    ),
+                verticalArrangement = Arrangement.spacedBy(DvideDimens.tight),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = if (metrics.ended) {
@@ -97,55 +101,51 @@ fun CardsDashboard(
                         } else if (viewIsWeekly) "Safe to spend · per week" else "Safe to spend · per day",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(end = DvideDimens.touch / 2),
                     )
-
-                    MoneyText(
-                        text = if (metrics.ended)
-                            formatter.format(kotlin.math.abs(metrics.balance))
-                        else
-                            "${sp.symbol}${sp.whole}${sp.decimalSeparator}${sp.frac}",
-                        style = MaterialTheme.typography.displaySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.fillMaxWidth().padding(end = DvideDimens.touch / 2),
-                        minSize = 22.sp,
+                    Icon(
+                        imageVector = CwIcons.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(16.dp),
                     )
-
-                    AllocationBar(
-                        metrics = metrics,
-                        height = 12.dp,
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Bottom,
-                    ) {
-                        Text(
-                            text = metrics.cycle.label(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
-                            modifier = Modifier.weight(1f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = "${formatter.format(kotlin.math.abs(metrics.balance))} ${if (metrics.balance >= 0) "left" else "over"}",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            maxLines = 1,
-                        )
-                    }
                 }
 
-                Icon(
-                    imageVector = CwIcons.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(DvideDimens.item),
+                MoneyText(
+                    text = if (metrics.ended)
+                        formatter.format(kotlin.math.abs(metrics.balance))
+                    else
+                        "${sp.symbol}${sp.whole}${if (sp.frac.isNotEmpty()) "${sp.decimalSeparator}${sp.frac}" else ""}",
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.fillMaxWidth().padding(end = DvideDimens.touch / 2),
+                    minSize = 22.sp,
                 )
+
+                AllocationBar(
+                    metrics = metrics,
+                    height = 12.dp,
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    Text(
+                        text = metrics.cycle.label(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = "${formatter.format(kotlin.math.abs(metrics.balance))} ${if (metrics.balance >= 0) "left" else "over"}",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        maxLines = 1,
+                    )
+                }
             }
         }
 
@@ -176,18 +176,13 @@ fun CardsDashboard(
             )
         }
 
-        CycleProgressBar(
-            cycle = metrics.cycle,
-            tight = metrics.tight,
-            modifier = Modifier.padding(horizontal = DvideDimens.screen, vertical = DvideDimens.item),
-        )
-
         TransactionTimeline(
             metrics = metrics,
             groupByWeek = viewIsWeekly,
             highlightId = highlightId,
             compact = true,
             onDeleteTransaction = onDeleteTransaction,
+            onEditTransaction = onEditTransaction,
             onAddTransaction = onAddTransaction,
             modifier = Modifier.padding(horizontal = DvideDimens.screen),
         )

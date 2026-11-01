@@ -1,20 +1,17 @@
 package com.knownassurajit.dvide_finance.app.ui.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.knownassurajit.dvide_finance.app.data.model.Category
+import com.knownassurajit.dvide_finance.app.domain.model.AppFont
 import com.knownassurajit.dvide_finance.app.util.formatMoney
 import com.knownassurajit.dvide_finance.app.util.moneyParts
 
@@ -48,14 +45,15 @@ data class CurrencyFormatter(
     val currencyCode: String = "GBP",
     val regionCode: String = "GB",
     val weekStartDay: Int = 2,
-    val numberFormat: String = "DEFAULT"
+    val numberFormat: String = "DEFAULT",
+    val showDecimals: Boolean = true,
 ) {
-    fun format(amount: Double, decimals: Int = 0): String {
-        return amount.formatMoney(currencyCode, regionCode, numberFormat, decimals)
+    fun format(amount: Double, decimals: Int = if (showDecimals) 2 else 0): String {
+        return amount.formatMoney(currencyCode, regionCode, numberFormat, decimals, showDecimals)
     }
 
     fun parts(amount: Double): com.knownassurajit.dvide_finance.app.util.MoneyParts {
-        return amount.moneyParts(currencyCode, regionCode, numberFormat)
+        return amount.moneyParts(currencyCode, regionCode, numberFormat, showDecimals)
     }
 }
 
@@ -72,24 +70,22 @@ fun DvideTheme(
     regionCode: String = "GB",
     weekStartDay: Int = 2,
     numberFormat: String = "DEFAULT",
+    showDecimals: Boolean = true,
+    fontOption: AppFont = AppFont.GOOGLE_SANS,
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        else -> colorSchemeForHue(seedHue, darkTheme)
-    }
+    val activeHue = if (dynamicColor) seedHue else 300
+    val colorScheme = colorSchemeForHue(activeHue, darkTheme)
 
     val extraColors = DvideExtraColors(
         status           = colorScheme.error,
         statusContainer  = colorScheme.errorContainer,
         onStatusContainer = colorScheme.onErrorContainer,
-        seedHue          = seedHue,
+        seedHue          = activeHue,
         dark             = darkTheme,
     )
 
-    val formatter = CurrencyFormatter(currencyCode, regionCode, weekStartDay, numberFormat)
+    val formatter = CurrencyFormatter(currencyCode, regionCode, weekStartDay, numberFormat, showDecimals)
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -107,7 +103,7 @@ fun DvideTheme(
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography  = DvideTypography,
+            typography  = typographyFor(fontOption),
             shapes      = DvideShapes,
             content     = content,
         )

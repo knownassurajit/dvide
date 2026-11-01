@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Header Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="DVIDE"
+            android:textColor="#D4AAFF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_days_left"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_chip_bg"
+            android:paddingStart="8dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="3dp"
+            android:text="--d left"
+            android:textColor="#E6E0E9"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <!-- Hero Balance -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp">
+
+        <TextView
+            android:id="@+id/widget_hero_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cycle Balance"
+            android:textColor="#938F99"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/widget_cycle_balance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="£0.00"
+            android:textColor="#FFFFFF"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Quotas Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/widget_chip_bg"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <!-- Daily quota -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Daily safe"
+                android:textColor="#938F99"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/widget_daily_quota"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="£0.00"
+                android:textColor="#E6E0E9"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Divider line -->
+        <FrameLayout
+            android:layout_width="1dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:background="#44414D" />
+
+        <!-- Weekly quota -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Weekly safe"
+                android:textColor="#938F99"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/widget_weekly_quota"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="£0.00"
+                android:textColor="#E6E0E9"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

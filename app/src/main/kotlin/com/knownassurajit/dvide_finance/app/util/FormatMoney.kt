@@ -19,8 +19,10 @@ fun Double.formatMoney(
     currencyCode: String = "GBP",
     regionCode: String = "GB",
     numberFormatOption: String = "DEFAULT",
-    decimals: Int = 0
+    decimals: Int = 0,
+    showDecimals: Boolean = true,
 ): String {
+    val effectiveDecimals = if (!showDecimals) 0 else decimals
     val locale = try {
         Locale("", regionCode)
     } catch (e: Exception) {
@@ -35,8 +37,8 @@ fun Double.formatMoney(
 
     val fmt = NumberFormat.getCurrencyInstance(locale).apply {
         this.currency = currency
-        minimumFractionDigits = decimals
-        maximumFractionDigits = decimals
+        minimumFractionDigits = effectiveDecimals
+        maximumFractionDigits = effectiveDecimals
     }
 
     // Apply custom number format overrides if requested
@@ -78,7 +80,8 @@ data class MoneyParts(
 fun Double.moneyParts(
     currencyCode: String = "GBP",
     regionCode: String = "GB",
-    numberFormatOption: String = "DEFAULT"
+    numberFormatOption: String = "DEFAULT",
+    showDecimals: Boolean = true,
 ): MoneyParts {
     val abs   = kotlin.math.abs(this)
     val whole = abs.toLong()
@@ -140,8 +143,8 @@ fun Double.moneyParts(
     return MoneyParts(
         symbol = symbol,
         whole = fmt.format(whole),
-        frac = frac.toString().padStart(2, '0'),
-        decimalSeparator = decimalSeparator
+        frac = if (showDecimals) frac.toString().padStart(2, '0') else "",
+        decimalSeparator = if (showDecimals) decimalSeparator else ""
     )
 }
 
