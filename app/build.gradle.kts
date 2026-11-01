@@ -28,13 +28,16 @@ android {
         versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: defaultVersionCode
         versionName = project.findProperty("versionName") as String? ?: defaultVersionName
 
-        resourceConfigurations += listOf("en", "ar", "de", "es-rES", "es-rUS", "fr", "he", "hr", "hu", "in", "it", "ja", "nl", "pl", "pt-rBR", "ru-rRU", "sv", "tr", "uk", "zh")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
 
-        // Room schema export for migrations
-        ksp {
-            arg("room.schemaLocation", "$projectDir/schemas")
-        }
+    // Room schema export for migrations
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
+
+    androidResources {
+        localeFilters += listOf("en", "ar", "de", "es-rES", "es-rUS", "fr", "he", "hr", "hu", "in", "it", "ja", "nl", "pl", "pt-rBR", "ru-rRU", "sv", "tr", "uk", "zh")
     }
 
     signingConfigs {
@@ -78,16 +81,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += listOf(
-            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
-            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-            "-opt-in=androidx.compose.ui.text.ExperimentalTextApi"
-        )
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -106,19 +99,31 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        freeCompilerArgs.addAll(
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
+            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+            "-opt-in=androidx.compose.ui.text.ExperimentalTextApi"
+        )
+    }
+}
+
 // Unit tests run against the debug variant only (as CI does). The release variant has no Compose test manifest
 // (ui-test-manifest is debugImplementation by design, so it never ships), so Compose-rule tests cannot launch
 // there, and it would only repeat the same tests on the same code.
 androidComponents {
     beforeVariants(selector().withBuildType("release")) { variantBuilder ->
-        variantBuilder.enableUnitTest = false
+        variantBuilder.hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]?.enable = false
     }
 }
 
 dependencies {
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.exifinterface) // EXIF orientation of user-picked photos (hardened parser)
+    implementation(libs.exifinterface) // EXIF orientation of user-picked photos (hardened parser)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
