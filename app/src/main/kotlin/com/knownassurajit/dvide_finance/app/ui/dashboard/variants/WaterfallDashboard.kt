@@ -85,7 +85,7 @@ fun WaterfallDashboard(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
-                            text = "${metrics.cycle.remaining}d left",
+                            text = metrics.daysLeftShort,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary,
@@ -161,6 +161,7 @@ fun WaterfallDashboard(
         CycleProgressBar(
             cycle = metrics.cycle,
             tight = metrics.tight,
+            ended = metrics.ended,
             modifier = Modifier.padding(horizontal = DvideDimens.screen, vertical = DvideDimens.tight),
         )
 

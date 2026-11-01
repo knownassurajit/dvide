@@ -110,7 +110,7 @@ fun GaugeDashboard(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
-                            text = "${metrics.cycle.remaining}d left",
+                            text = metrics.daysLeftShort,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary,

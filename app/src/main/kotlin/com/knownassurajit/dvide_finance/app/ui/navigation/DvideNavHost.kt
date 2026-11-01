@@ -50,6 +50,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -132,8 +133,22 @@ fun DvideNavHost(
     val enterPop  = M3XMotion.enterPop()
     val exitPop   = M3XMotion.exitPop()
 
+    // A double tap (or a repeated state emission) must not stack two copies of a screen or pop past it:
+    // only navigate while the current destination is fully resumed, and never duplicate the top entry.
+    fun navigateTo(route: String) {
+        if (navController.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
+            navController.navigate(route) { launchSingleTop = true }
+        }
+    }
+
+    fun goBack() {
+        if (navController.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
+            navController.popBackStack()
+        }
+    }
+
     fun openCycle(cycleId: Long) {
-        navController.navigate("cycle/$cycleId")
+        navigateTo("cycle/$cycleId")
     }
 
     fun shareExport(format: ExportFormat = ExportFormat.CSV) {
@@ -220,12 +235,12 @@ fun DvideNavHost(
                         userName      = settings.userName,
                         highlightId   = highlightId,
                         profilePictureUri = settings.profilePictureUri,
-                        onOpenSettings = { navController.navigate(ROUTE_SETTINGS) },
+                        onOpenSettings = { navigateTo(ROUTE_SETTINGS) },
                         onOpenCycle    = {
                             val id = metrics?.sourceCycleId
                             if (id != null && id != 0L) openCycle(id)
                         },
-                        onOpenProfile  = { navController.navigate(ROUTE_PROFILE) },
+                        onOpenProfile  = { navigateTo(ROUTE_PROFILE) },
                         onDeleteTransaction = viewModel::deleteTransaction,
                         onEditTransaction = { tx ->
                             editingTransaction = tx
@@ -236,7 +251,7 @@ fun DvideNavHost(
                             editingTransaction = null
                             showAddSheet = true
                         },
-                        onOpenArchive = { navController.navigate(ROUTE_ARCHIVE) },
+                        onOpenArchive = { navigateTo(ROUTE_ARCHIVE) },
                     )
                 }
 
@@ -249,14 +264,14 @@ fun DvideNavHost(
                 ) {
                     SettingsScreen(
                         settings            = settings,
-                        onClose             = { navController.popBackStack() },
+                        onClose             = { goBack() },
                         onToggleTheme       = viewModel::toggleTheme,
                         onDarkThemeChange   = viewModel::setDarkTheme,
                         onDynamicColorChange = viewModel::setDynamicColor,
                         onVariantChange     = viewModel::setVariant,
                         onSeedHueChange     = viewModel::setSeedHue,
                         onShowDecimalsChange = viewModel::setShowDecimals,
-                        onOpenProfile       = { navController.navigate(ROUTE_PROFILE) },
+                        onOpenProfile       = { navigateTo(ROUTE_PROFILE) },
                         onCurrencyChange    = viewModel::setCurrencyCode,
                         onRegionChange      = viewModel::setRegionCode,
                         onWeekStartChange   = viewModel::setWeekStartDay,
@@ -265,6 +280,11 @@ fun DvideNavHost(
                         onPaydayChange      = viewModel::setPayday,
                         onExport            = { shareExport(ExportFormat.CSV) },
                         onExportFormat      = { format: ExportFormat -> shareExport(format) },
+                        onSwipeLeftChange   = viewModel::setSwipeLeft,
+                        onSwipeRightChange  = viewModel::setSwipeRight,
+                        onExportBackup      = viewModel::exportBackup,
+                        onReadBackup        = viewModel::readBackup,
+                        onRestoreBackup     = viewModel::restoreBackup,
                     )
                 }
 
@@ -278,7 +298,7 @@ fun DvideNavHost(
                     ProfileScreen(
                         settings        = settings,
                         onSave          = { name, email, pic -> viewModel.updateProfile(name, email, pic) },
-                        onClose         = { navController.popBackStack() },
+                        onClose         = { goBack() },
                     )
                 }
 
@@ -291,7 +311,7 @@ fun DvideNavHost(
                 ) {
                     ArchiveScreen(
                         pastCycles = pastCycles,
-                        onClose = { navController.popBackStack() },
+                        onClose = { goBack() },
                         onOpenCycle = { past ->
                             if (past.cycleId != 0L) openCycle(past.cycleId)
                         },
@@ -318,7 +338,7 @@ fun DvideNavHost(
                     CycleDetailScreen(
                         metrics    = detailMetrics,
                         cycle      = cycle,
-                        onClose    = { navController.popBackStack() },
+                        onClose    = { goBack() },
                         onEdit     = {
                             if (cycle != null) {
                                 editingCycle = cycle
@@ -328,7 +348,7 @@ fun DvideNavHost(
                         onDelete   = {
                             if (cycle != null) {
                                 viewModel.deleteCycle(cycle)
-                                navController.popBackStack()
+                                goBack()
                             }
                         },
                         onExport   = {

@@ -126,9 +126,9 @@ fun EditorialDashboard(
                     )
                     Text(
                         text = if (viewIsWeekly)
-                            "Per week · ${metrics.cycle.remaining} days left"
+                            "Per week · ${metrics.daysLeftText}"
                         else
-                            "Per day · ${metrics.cycle.remaining} days left",
+                            "Per day · ${metrics.daysLeftText}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -198,6 +198,7 @@ fun EditorialDashboard(
         CycleProgressBar(
             cycle = metrics.cycle,
             tight = metrics.tight,
+            ended = metrics.ended,
             modifier = Modifier.padding(horizontal = DvideDimens.screen, vertical = DvideDimens.item),
         )
 

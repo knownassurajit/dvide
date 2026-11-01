@@ -4,26 +4,39 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knownassurajit.dvide_finance.app.data.model.Category
 import com.knownassurajit.dvide_finance.app.data.model.Transaction
+import com.knownassurajit.dvide_finance.app.domain.model.EntryLimits
 import com.knownassurajit.dvide_finance.app.ui.components.CategoryChip
+import com.knownassurajit.dvide_finance.app.ui.components.ColorPickerDialog
 import com.knownassurajit.dvide_finance.app.ui.components.CwIcons
 import com.knownassurajit.dvide_finance.app.ui.components.DatePickerField
 import com.knownassurajit.dvide_finance.app.ui.components.Keypad
@@ -33,6 +46,7 @@ import com.knownassurajit.dvide_finance.app.ui.theme.M3XMotion
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeCommitBtn
 import com.knownassurajit.dvide_finance.app.ui.theme.dvideColors
 import com.knownassurajit.dvide_finance.app.ui.theme.m3xPressEffect
+import com.knownassurajit.dvide_finance.app.ui.theme.readableContent
 import java.time.LocalDate
 
 data class NewTransaction(
@@ -68,6 +82,7 @@ val ENTRY_COLOR_SWATCHES = listOf(
     0xFFFF9800.toInt() to "Orange",
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddTransactionSheet(
     onAdd: (NewTransaction) -> Unit,
@@ -102,7 +117,10 @@ fun AddTransactionSheet(
     var category by remember(editing) {
         mutableStateOf(editing?.category ?: "essentials")
     }
-    var customCat by remember { mutableStateOf("") }
+    var customCat by remember(editing) {
+        mutableStateOf(editing?.category?.takeIf { it !in Category.ALL_KEYS } ?: "")
+    }
+    var showColorPicker by remember { mutableStateOf(false) }
     var note by remember(editing) { mutableStateOf(editing?.note ?: "") }
     var selectedColor by remember(editing) { mutableStateOf(editing?.color) }
     var entryDate by remember(editing) {
@@ -242,14 +260,14 @@ fun AddTransactionSheet(
         // Note input
         OutlinedTextField(
             value         = note,
-            onValueChange = { if (it.length <= 32) note = it },
+            onValueChange = { note = EntryLimits.clampInput(it, EntryLimits.NOTE_MAX) },
             placeholder   = {
                 Text(
                     "Add a note · e.g. ${ENTRY_NOTES[activeCat]?.firstOrNull() ?: ""}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                 )
             },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp).testTag("entry_note_field"),
             shape    = RoundedCornerShape(16.dp),
             colors   = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = Color.Transparent,
@@ -257,7 +275,16 @@ fun AddTransactionSheet(
                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                 focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainer,
             ),
-            singleLine = true,
+            minLines = 1,
+            maxLines = 3,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+            supportingText = {
+                Text(
+                    text = "${note.length}/${EntryLimits.NOTE_MAX}",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End,
+                )
+            },
         )
 
         // Category chips
@@ -282,14 +309,14 @@ fun AddTransactionSheet(
         // Custom category input
         OutlinedTextField(
             value         = customCat,
-            onValueChange = { if (it.length <= 24) customCat = it },
+            onValueChange = { customCat = EntryLimits.clampInput(it, EntryLimits.CATEGORY_MAX) },
             placeholder   = {
                 Text(
                     "or type a category…",
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
                 )
             },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp).testTag("entry_category_field"),
             shape    = RoundedCornerShape(14.dp),
             colors   = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -298,6 +325,16 @@ fun AddTransactionSheet(
                 focusedContainerColor   = Color.Transparent,
             ),
             singleLine = true,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+            supportingText = if (customCat.isNotEmpty()) {
+                {
+                    Text(
+                        text = "${customCat.length}/${EntryLimits.CATEGORY_MAX}",
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.End,
+                    )
+                }
+            } else null,
         )
 
         // Entry Accent Color Swatches
@@ -307,53 +344,35 @@ fun AddTransactionSheet(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),
         )
-        Row(
+        val customSelected = selectedColor != null && ENTRY_COLOR_SWATCHES.none { it.first == selectedColor }
+        // Wraps instead of scrolling sideways, so every swatch (including "Custom") is visible without discovery.
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .selectableGroup()
+                .padding(bottom = 12.dp),
         ) {
-            ENTRY_COLOR_SWATCHES.forEach { (colorVal, _) ->
-                val isSelected = selectedColor == colorVal
-                val swatchColor = if (colorVal == null) baseCatColor else Color(colorVal)
-
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(swatchColor)
-                        .clickable {
-                            selectedColor = colorVal
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        }
-                        .then(
-                            if (isSelected) {
-                                Modifier.border(2.5.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                            } else {
-                                Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                            }
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (isSelected) {
-                        Icon(
-                            imageVector = CwIcons.Check,
-                            contentDescription = "Selected",
-                            tint = if (colorVal == null) MaterialTheme.colorScheme.surface else Color.White,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    } else if (colorVal == null) {
-                        Text(
-                            text = "Auto",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.surface,
-                        )
-                    }
-                }
+            ENTRY_COLOR_SWATCHES.forEach { (colorVal, name) ->
+                ColorSwatch(
+                    color = if (colorVal == null) baseCatColor else Color(colorVal),
+                    name = if (colorVal == null) "Automatic" else name,
+                    selected = selectedColor == colorVal,
+                    isAuto = colorVal == null,
+                    onClick = {
+                        selectedColor = colorVal
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    },
+                )
             }
+            // A previously saved custom color appears here as its own selected swatch, then "Custom…" opens the picker.
+            ColorSwatch(
+                color = if (customSelected) Color(selectedColor!!) else MaterialTheme.colorScheme.surfaceContainerHighest,
+                name = if (customSelected) "Custom color" else "Choose a custom color",
+                selected = customSelected,
+                isAuto = false,
+                showPlus = !customSelected,
+                onClick = { showColorPicker = true },
+            )
         }
 
         // Keypad
@@ -373,7 +392,8 @@ fun AddTransactionSheet(
             enabled  = valid,
             colors   = ButtonDefaults.buttonColors(
                 containerColor         = catColor,
-                contentColor           = MaterialTheme.colorScheme.onPrimary,
+                // Readable on any entry color, including custom ones (never white-on-yellow).
+                contentColor           = catColor.readableContent(),
                 disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 disabledContentColor   = MaterialTheme.colorScheme.onSurfaceVariant,
             ),
@@ -384,7 +404,58 @@ fun AddTransactionSheet(
                 text  = if (editing != null) "Save changes"
                         else "${if (mode == MODE_ASIDE) "Set aside" else "Add"} ${Category.labelOf(activeCat).lowercase()}",
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight(680)),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis, // a 40 character custom category must not wrap or clip in the button
             )
+        }
+    }
+    if (showColorPicker) {
+        ColorPickerDialog(
+            initial = selectedColor?.let { Color(it) } ?: baseCatColor,
+            onConfirm = { picked ->
+                selectedColor = picked.toArgb()
+                showColorPicker = false
+            },
+            onDismiss = { showColorPicker = false },
+        )
+    }
+}
+
+/** One 48dp touch target around a 34dp swatch; announced as a radio option ("Blue, selected"). */
+@Composable
+private fun ColorSwatch(
+    color: Color,
+    name: String,
+    selected: Boolean,
+    isAuto: Boolean,
+    onClick: () -> Unit,
+    showPlus: Boolean = false,
+) {
+    Box(
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .semantics { contentDescription = name },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(color)
+                .border(
+                    width = if (selected) 2.5.dp else 1.dp,
+                    color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant,
+                    shape = CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            val onSwatch = color.readableContent()
+            when {
+                selected -> Icon(CwIcons.Check, contentDescription = null, tint = onSwatch, modifier = Modifier.size(16.dp))
+                showPlus -> Icon(CwIcons.Plus, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                isAuto -> Text("Auto", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = onSwatch)
+            }
         }
     }
 }

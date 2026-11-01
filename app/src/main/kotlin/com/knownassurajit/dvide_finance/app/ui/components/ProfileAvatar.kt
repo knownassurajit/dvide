@@ -1,7 +1,5 @@
 package com.knownassurajit.dvide_finance.app.ui.components
 
-import android.graphics.BitmapFactory
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,17 +10,28 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.knownassurajit.dvide_finance.app.data.profile.ProfileImages
 
+/**
+ * Circular profile picture, or the user's initial when there is no (readable) photo.
+ *
+ * [imageUri] is the stored photo reference (a private file name; see [ProfileImages]). Decoding happens off the
+ * main thread at the displayed size, so a large photo can never block or exhaust memory during composition.
+ */
 @Composable
 fun ProfileAvatar(
     userName: String,
@@ -30,19 +39,18 @@ fun ProfileAvatar(
     size: Dp = 42.dp,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onClickLabel: String? = null,
 ) {
     val context = LocalContext.current
-    val bitmap = remember(imageUri) {
-        if (!imageUri.isNullOrBlank()) {
-            try {
-                val uri = Uri.parse(imageUri)
-                context.contentResolver.openInputStream(uri)?.use { stream ->
-                    BitmapFactory.decodeStream(stream)
-                }
-            } catch (_: Exception) {
-                null
-            }
-        } else null
+    val targetPx = with(LocalDensity.current) { (size * 2).roundToPx() }
+
+    val bitmap by produceState<ImageBitmap?>(
+        initialValue = imageUri?.takeIf { it.isNotBlank() }?.let { ProfileImages.peek(it, targetPx)?.asImageBitmap() },
+        imageUri,
+        targetPx,
+    ) {
+        value = if (imageUri.isNullOrBlank()) null
+                else ProfileImages.decodeAvatar(context, imageUri, targetPx)?.asImageBitmap()
     }
 
     Box(
@@ -50,18 +58,25 @@ fun ProfileAvatar(
             .size(size)
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+            .then(
+                if (onClick != null) Modifier.clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
+                else Modifier
+            ),
         contentAlignment = Alignment.Center,
     ) {
-        if (bitmap != null) {
+        val photo = bitmap
+        if (photo != null) {
             Image(
-                bitmap = bitmap.asImageBitmap(),
+                bitmap = photo,
                 contentDescription = "Profile photo",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-            val initial = userName.trim().take(1).uppercase().ifEmpty { "Y" }
+            val trimmed = userName.trim()
+            // First code point, so an emoji or a character outside the BMP is never cut in half.
+            val initial = if (trimmed.isEmpty()) "Y"
+                          else String(Character.toChars(trimmed.codePointAt(0))).uppercase()
             Text(
                 text = initial,
                 style = if (size > 60.dp) MaterialTheme.typography.headlineMedium

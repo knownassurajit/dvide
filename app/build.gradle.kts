@@ -106,9 +106,19 @@ android {
     }
 }
 
+// Unit tests run against the debug variant only (as CI does). The release variant has no Compose test manifest
+// (ui-test-manifest is debugImplementation by design, so it never ships), so Compose-rule tests cannot launch
+// there, and it would only repeat the same tests on the same code.
+androidComponents {
+    beforeVariants(selector().withBuildType("release")) { variantBuilder ->
+        variantBuilder.enableUnitTest = false
+    }
+}
+
 dependencies {
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.exifinterface) // EXIF orientation of user-picked photos (hardened parser)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
