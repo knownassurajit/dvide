@@ -348,7 +348,7 @@ jobs:
 
       - name: Post sticky PR comment
         if: always()
-        uses: marocchino/sticky-pull-request-comment@52423e01640425a022ef5fd42c6fb5f633a02728
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88
         with:
           header: pr-summary
           message: |
