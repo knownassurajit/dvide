@@ -16,6 +16,7 @@ import com.knownassurajit.dvide_finance.app.data.repository.TransactionRepositor
 import com.knownassurajit.dvide_finance.app.domain.engine.CycleEngine
 import com.knownassurajit.dvide_finance.app.domain.model.AppFont
 import com.knownassurajit.dvide_finance.app.data.profile.ProfileImages
+import com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
 import com.knownassurajit.dvide_finance.app.domain.model.EntryLimits
 import com.knownassurajit.dvide_finance.app.domain.model.Metrics
@@ -166,6 +167,15 @@ class MainViewModel @Inject constructor(
 
     fun addTransaction(newTx: NewTransaction) {
         viewModelScope.launch {
+            if (newTx.kind == "income") {
+                val targetCycleId = newTx.cycleId ?: currentCycle.value?.id
+                val targetCycle = cycleRepo.getAll().firstOrNull { it.id == targetCycleId }
+                    ?: currentCycle.value
+                if (targetCycle != null) {
+                    val updated = targetCycle.copy(income = targetCycle.income + newTx.amount)
+                    cycleRepo.update(updated)
+                }
+            }
             val id = transactionRepo.insert(
                 Transaction(
                     date     = newTx.date,
@@ -184,30 +194,39 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun addFundsToCurrentCycle(amount: Double, note: String = "Top-up balance") {
-        val cycle = currentCycle.value ?: return
-        viewModelScope.launch {
-            val updated = cycle.copy(income = cycle.income + amount)
-            cycleRepo.update(updated)
-            val txId = transactionRepo.insert(
-                Transaction(
-                    date = today,
-                    category = "income",
-                    kind = "income",
-                    amount = amount,
-                    note = note.ifBlank { "Top-up balance" },
-                    cycleId = cycle.id,
-                )
+    fun addFundsToCurrentCycle(amount: Double, note: String = "Top-up balance", date: LocalDate = today) {
+        addTransaction(
+            NewTransaction(
+                amount = amount,
+                category = "income",
+                kind = "income",
+                note = note.ifBlank { "Top-up balance" },
+                date = date,
             )
-            _highlightId.value = txId
-            notifyWidget()
-            delay(1_400)
-            _highlightId.value = null
-        }
+        )
     }
 
     fun updateTransaction(tx: Transaction) {
         viewModelScope.launch {
+            val old = transactionRepo.getAll().firstOrNull { it.id == tx.id }
+            val targetCycleId = tx.cycleId ?: currentCycle.value?.id
+            val targetCycle = cycleRepo.getAll().firstOrNull { it.id == targetCycleId }
+                ?: currentCycle.value
+            if (targetCycle != null) {
+                var cycleDiff = 0.0
+                val wasIncome = old?.kind == "income"
+                val isIncome = tx.kind == "income"
+                if (wasIncome && isIncome) {
+                    cycleDiff = tx.amount - old.amount
+                } else if (!wasIncome && isIncome) {
+                    cycleDiff = tx.amount
+                } else if (wasIncome) {
+                    cycleDiff = -old.amount
+                }
+                if (cycleDiff != 0.0) {
+                    cycleRepo.update(targetCycle.copy(income = (targetCycle.income + cycleDiff).coerceAtLeast(0.0)))
+                }
+            }
             transactionRepo.update(
                 tx.copy(
                     category = EntryLimits.normalize(tx.category, EntryLimits.CATEGORY_MAX),
@@ -263,6 +282,18 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { settingsRepo.setSeedHue(hue) }
     }
 
+    fun setSplitDashboardColor(split: Boolean) {
+        viewModelScope.launch { settingsRepo.setSplitDashboardColor(split) }
+    }
+
+    fun setDashboardHue(hue: Int) {
+        viewModelScope.launch { settingsRepo.setDashboardHue(hue) }
+    }
+
+    fun setDashboardStyle(style: DashboardStyle) {
+        viewModelScope.launch { settingsRepo.setDashboardStyle(style) }
+    }
+
     fun setViewIsWeekly(weekly: Boolean) {
         _viewIsWeekly.value = weekly
     }
@@ -284,6 +315,14 @@ class MainViewModel @Inject constructor(
 
     fun deleteTransaction(tx: Transaction) {
         viewModelScope.launch {
+            if (tx.kind == "income") {
+                val targetCycleId = tx.cycleId ?: currentCycle.value?.id
+                val targetCycle = cycleRepo.getAll().firstOrNull { it.id == targetCycleId }
+                    ?: currentCycle.value
+                if (targetCycle != null) {
+                    cycleRepo.update(targetCycle.copy(income = (targetCycle.income - tx.amount).coerceAtLeast(0.0)))
+                }
+            }
             transactionRepo.delete(tx)
             notifyWidget()
         }

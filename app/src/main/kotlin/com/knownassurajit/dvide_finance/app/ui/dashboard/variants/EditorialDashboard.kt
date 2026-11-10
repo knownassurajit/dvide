@@ -1,5 +1,6 @@
 package com.knownassurajit.dvide_finance.app.ui.dashboard.variants
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -7,9 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,6 +26,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knownassurajit.dvide_finance.app.data.model.Transaction
+import com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle
 import com.knownassurajit.dvide_finance.app.domain.model.Metrics
 import com.knownassurajit.dvide_finance.app.ui.components.AllocationBar
 import com.knownassurajit.dvide_finance.app.ui.components.CycleProgressBar
@@ -30,6 +34,7 @@ import com.knownassurajit.dvide_finance.app.ui.components.MoneyText
 import com.knownassurajit.dvide_finance.app.ui.components.TransactionTimeline
 import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import com.knownassurajit.dvide_finance.app.ui.theme.LocalCurrencyFormatter
+import com.knownassurajit.dvide_finance.app.ui.theme.dashboardStyle
 import com.knownassurajit.dvide_finance.app.ui.theme.dvideColors
 
 @Composable
@@ -45,63 +50,78 @@ fun EditorialDashboard(
     modifier: Modifier = Modifier,
 ) {
     val formatter = LocalCurrencyFormatter.current
+    val style = MaterialTheme.dashboardStyle
 
     Column(modifier = modifier) {
-        Box(
-            modifier = Modifier
+        val heroModifier = if (style == DashboardStyle.TINTED) {
+            Modifier
                 .fillMaxWidth()
-                .combinedClickable(
-                    role = Role.Button,
-                    onClickLabel = "View cycle detail",
-                    onClick = { onOpenCycle() },
-                    onLongClick = { onViewChange(!viewIsWeekly) },
-                )
-                .padding(
-                    start = DvideDimens.screen,
-                    end = DvideDimens.screen,
-                    top = DvideDimens.item,
-                    bottom = DvideDimens.item,
-                ),
-        ) {
-            val statusColor = MaterialTheme.dvideColors.status
+                .padding(horizontal = DvideDimens.screen, vertical = DvideDimens.tight)
+        } else {
+            Modifier.fillMaxWidth()
+        }
 
-            Column(
+        Surface(
+            modifier = heroModifier,
+            shape = RoundedCornerShape(24.dp),
+            color = if (style == DashboardStyle.TINTED) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surface,
+            border = if (style == DashboardStyle.TINTED) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)) else null,
+        ) {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(end = DvideDimens.touch / 2),
-                verticalArrangement = Arrangement.spacedBy(DvideDimens.hairline),
+                    .combinedClickable(
+                        role = Role.Button,
+                        onClickLabel = "View cycle detail",
+                        onClick = { onOpenCycle() },
+                        onLongClick = { onViewChange(!viewIsWeekly) },
+                    )
+                    .padding(
+                        start = DvideDimens.screen,
+                        end = DvideDimens.screen,
+                        top = DvideDimens.item,
+                        bottom = DvideDimens.item,
+                    ),
             ) {
-                if (metrics.ended) {
-                    Text(
-                        text = if (metrics.balance >= 0) "Closed with surplus" else "Closed · borrowed",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    MoneyText(
-                        text = formatter.format(kotlin.math.abs(metrics.balance)),
-                        style = MaterialTheme.typography.displayLarge,
-                        color = if (metrics.balance >= 0)
-                            MaterialTheme.colorScheme.onSurface
-                        else statusColor,
-                        modifier = Modifier.fillMaxWidth(),
-                        minSize = 28.sp,
-                    )
-                    Text(
-                        text = metrics.cycle.label(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    val safeAmount = if (viewIsWeekly) metrics.safeToSpend * 7.0 else metrics.safeToSpend
-                    val sp = formatter.parts(safeAmount)
-                    Text(
-                        text = if (viewIsWeekly) "Safe to spend · weekly" else "Safe to spend · daily",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    MoneyText(
-                        text = buildAnnotatedString {
-                            withStyle(SpanStyle(fontSize = 32.sp, fontWeight = FontWeight.SemiBold)) {
+                val statusColor = MaterialTheme.dvideColors.status
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = DvideDimens.touch / 2),
+                    verticalArrangement = Arrangement.spacedBy(DvideDimens.hairline),
+                ) {
+                    if (metrics.ended) {
+                        Text(
+                            text = if (metrics.balance >= 0) "Closed with surplus" else "Closed · borrowed",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        MoneyText(
+                            text = formatter.format(kotlin.math.abs(metrics.balance)),
+                            style = MaterialTheme.typography.displayLarge,
+                            color = if (metrics.balance >= 0)
+                                MaterialTheme.colorScheme.onSurface
+                            else statusColor,
+                            modifier = Modifier.fillMaxWidth(),
+                            minSize = 28.sp,
+                        )
+                        Text(
+                            text = metrics.cycle.label(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        val safeAmount = if (viewIsWeekly) metrics.safeToSpend * 7.0 else metrics.safeToSpend
+                        val sp = formatter.parts(safeAmount)
+                        Text(
+                            text = if (viewIsWeekly) "Safe to spend · weekly" else "Safe to spend · daily",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        MoneyText(
+                            text = buildAnnotatedString {
+                                withStyle(SpanStyle(fontSize = 32.sp, fontWeight = FontWeight.SemiBold)) {
                                 append(sp.symbol)
                             }
                             append(sp.whole)
@@ -130,7 +150,7 @@ fun EditorialDashboard(
                         else
                             "Per day · ${metrics.daysLeftText}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
@@ -142,6 +162,7 @@ fun EditorialDashboard(
                 modifier = Modifier.align(Alignment.CenterEnd),
             )
         }
+    }
 
         AllocationBar(
             metrics = metrics,
@@ -199,7 +220,7 @@ fun EditorialDashboard(
             cycle = metrics.cycle,
             tight = metrics.tight,
             ended = metrics.ended,
-            modifier = Modifier.padding(horizontal = DvideDimens.screen, vertical = DvideDimens.item),
+            modifier = Modifier.padding(horizontal = DvideDimens.screen, vertical = DvideDimens.tight),
         )
 
         TransactionTimeline(

@@ -15,12 +15,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.knownassurajit.dvide_finance.app.domain.model.Cycle
-import com.knownassurajit.dvide_finance.app.ui.theme.dvideColors
 
 @Composable
 fun CycleProgressBar(
     cycle: Cycle,
-    tight: Boolean,
+    @Suppress("UNUSED_PARAMETER") tight: Boolean = false,
     modifier: Modifier = Modifier,
     ended: Boolean = false,
 ) {
@@ -44,10 +43,7 @@ fun CycleProgressBar(
                     .fillMaxWidth(progress)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(999.dp))
-                    .background(
-                        if (tight) MaterialTheme.dvideColors.status
-                        else       MaterialTheme.colorScheme.primary
-                    )
+                    .background(MaterialTheme.colorScheme.primary)
             )
         }
 

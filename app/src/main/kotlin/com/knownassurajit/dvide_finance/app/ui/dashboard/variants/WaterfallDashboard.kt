@@ -27,6 +27,10 @@ import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import com.knownassurajit.dvide_finance.app.ui.theme.LocalCurrencyFormatter
 import com.knownassurajit.dvide_finance.app.ui.theme.dvideColors
 import com.knownassurajit.dvide_finance.app.ui.theme.m3xPressEffect
+import androidx.compose.foundation.BorderStroke
+import com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle
+import com.knownassurajit.dvide_finance.app.ui.theme.dashboardCardColors
+import com.knownassurajit.dvide_finance.app.ui.theme.dashboardStyle
 
 @Composable
 fun WaterfallDashboard(
@@ -44,6 +48,8 @@ fun WaterfallDashboard(
     val safeAmount = if (viewIsWeekly) metrics.safeToSpend * 7.0 else metrics.safeToSpend
     val sp = formatter.parts(safeAmount)
     val cc = MaterialTheme.dvideColors
+    val style = MaterialTheme.dashboardStyle
+    val cardColors = dashboardCardColors(style)
 
     Column(modifier = modifier.fillMaxWidth()) {
         // Hero Waterfall Card
@@ -60,7 +66,8 @@ fun WaterfallDashboard(
                     onLongClick = { onViewChange(!viewIsWeekly) },
                 ),
             shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = cardColors.containerColor,
+            border = if (cardColors.borderColor != Color.Transparent) BorderStroke(1.dp, cardColors.borderColor) else null,
         ) {
             Column(
                 modifier = Modifier
@@ -146,7 +153,7 @@ fun WaterfallDashboard(
                 step = "3",
                 label = "Spendable Pool",
                 amount = formatter.format(metrics.spendable),
-                color = MaterialTheme.colorScheme.secondary,
+                color = MaterialTheme.colorScheme.primary,
                 subtext = "Income minus set-aside",
             )
             WaterfallStepRow(
@@ -186,10 +193,12 @@ private fun WaterfallStepRow(
     subtext: String,
     modifier: Modifier = Modifier,
 ) {
+    val style = MaterialTheme.dashboardStyle
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = if (style == DashboardStyle.TINTED) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceContainer,
+        border = if (style == DashboardStyle.TINTED) BorderStroke(0.8.dp, color.copy(alpha = 0.25f)) else null,
     ) {
         Row(
             modifier = Modifier

@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.knownassurajit.dvide_finance.app.ui.theme.dashboardStyle
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -71,6 +72,8 @@ fun GaugeDashboard(
         topStart = cornerTL, topEnd = cornerTL,
         bottomEnd = cornerBR, bottomStart = 16.dp,
     )
+    val style = MaterialTheme.dashboardStyle
+    val cardColors = com.knownassurajit.dvide_finance.app.ui.theme.dashboardCardColors(style)
 
     Column(modifier = modifier) {
         Surface(
@@ -85,7 +88,8 @@ fun GaugeDashboard(
                     onLongClick = { onViewChange(!viewIsWeekly) },
                 ),
             shape = cardShape,
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = if (style == com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle.CONTAINER) MaterialTheme.colorScheme.surfaceContainer else cardColors.containerColor,
+            border = if (cardColors.borderColor != Color.Transparent) BorderStroke(1.dp, cardColors.borderColor) else null,
             tonalElevation = 0.dp,
         ) {
             Column(
@@ -134,7 +138,7 @@ fun GaugeDashboard(
                             value = metrics.balanceFraction,
                             size = ring,
                             strokeWidth = stroke,
-                            fillColor = if (metrics.tight) cc.status else MaterialTheme.colorScheme.primary,
+                            fillColor = MaterialTheme.colorScheme.primary,
                             trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             sharp = metrics.tight,
                         ) {

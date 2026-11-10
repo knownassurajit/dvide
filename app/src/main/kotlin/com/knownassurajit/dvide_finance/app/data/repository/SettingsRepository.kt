@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import com.knownassurajit.dvide_finance.app.data.backup.BackupSettings
 import com.knownassurajit.dvide_finance.app.domain.model.AppFont
+import com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
 import com.knownassurajit.dvide_finance.app.domain.model.SwipeAction
 import com.knownassurajit.dvide_finance.app.domain.model.SwipeConfig
@@ -37,6 +38,9 @@ class SettingsRepository @Inject constructor(
         val KEY_PROFILE_PICTURE_URI = stringPreferencesKey("profile_picture_uri")
         val KEY_SWIPE_LEFT       = stringPreferencesKey("swipe_left_action")
         val KEY_SWIPE_RIGHT      = stringPreferencesKey("swipe_right_action")
+        val KEY_SPLIT_DASHBOARD_COLOR = booleanPreferencesKey("split_dashboard_color")
+        val KEY_DASHBOARD_HUE    = intPreferencesKey("dashboard_hue")
+        val KEY_DASHBOARD_STYLE  = stringPreferencesKey("dashboard_style")
 
         private fun defaultCurrencyCode(): String {
             return try {
@@ -73,6 +77,9 @@ class SettingsRepository @Inject constructor(
                 fontOption       = AppFont.fromKey(prefs[KEY_FONT_OPTION]),
                 swipeLeft        = SwipeAction.fromKey(prefs[KEY_SWIPE_LEFT], SwipeConfig.DEFAULT_LEFT),
                 swipeRight       = SwipeAction.fromKey(prefs[KEY_SWIPE_RIGHT], SwipeConfig.DEFAULT_RIGHT),
+                splitDashboardColor = prefs[KEY_SPLIT_DASHBOARD_COLOR] ?: false,
+                dashboardHue     = prefs[KEY_DASHBOARD_HUE] ?: (prefs[KEY_SEED_HUE] ?: 300),
+                dashboardStyle   = DashboardStyle.fromKey(prefs[KEY_DASHBOARD_STYLE]),
                 isLoaded         = true,
             )
         }
@@ -116,6 +123,13 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setSwipeRight(action: SwipeAction) = dataStore.edit { it[KEY_SWIPE_RIGHT] = action.key }
 
+    suspend fun setSplitDashboardColor(split: Boolean) = dataStore.edit { it[KEY_SPLIT_DASHBOARD_COLOR] = split }
+
+    suspend fun setDashboardHue(hue: Int) = dataStore.edit { it[KEY_DASHBOARD_HUE] = hue }
+
+    suspend fun setDashboardStyle(style: DashboardStyle) =
+        dataStore.edit { it[KEY_DASHBOARD_STYLE] = style.key }
+
     /** Preferences that belong in a backup file (no profile photo reference, no one-time flags). */
     suspend fun exportForBackup(): BackupSettings {
         val s = settingsFlow.first()
@@ -135,6 +149,9 @@ class SettingsRepository @Inject constructor(
             swipeRight = s.swipeRight,
             userName = s.userName,
             userEmail = s.userEmail,
+            splitDashboardColor = s.splitDashboardColor,
+            dashboardHue = s.dashboardHue,
+            dashboardStyle = s.dashboardStyle,
         )
     }
 
@@ -158,6 +175,9 @@ class SettingsRepository @Inject constructor(
         settings.swipeRight?.let { p[KEY_SWIPE_RIGHT] = it.key }
         settings.userName?.let { p[KEY_USER_NAME] = it }
         settings.userEmail?.let { p[KEY_USER_EMAIL] = it }
+        settings.splitDashboardColor?.let { p[KEY_SPLIT_DASHBOARD_COLOR] = it }
+        settings.dashboardHue?.let { p[KEY_DASHBOARD_HUE] = it }
+        settings.dashboardStyle?.let { p[KEY_DASHBOARD_STYLE] = it.key }
         p[KEY_SEEDED] = true
     }
 }
@@ -180,6 +200,9 @@ data class AppSettings(
     val fontOption: AppFont      = AppFont.GOOGLE_SANS,
     val swipeLeft: SwipeAction   = SwipeConfig.DEFAULT_LEFT,
     val swipeRight: SwipeAction  = SwipeConfig.DEFAULT_RIGHT,
+    val splitDashboardColor: Boolean = false,
+    val dashboardHue: Int        = 300,
+    val dashboardStyle: DashboardStyle = DashboardStyle.CONTAINER,
     /**
      * False only for the placeholder value used before DataStore has delivered its first snapshot. Startup code
      * must not draw (or pick onboarding vs. dashboard) from an unloaded instance, or the user sees default

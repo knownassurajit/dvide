@@ -19,6 +19,7 @@ import com.knownassurajit.dvide_finance.app.data.repository.CycleRepository
 import com.knownassurajit.dvide_finance.app.data.repository.SettingsRepository
 import com.knownassurajit.dvide_finance.app.data.repository.TransactionRepository
 import com.knownassurajit.dvide_finance.app.domain.model.AppFont
+import com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
 import com.knownassurajit.dvide_finance.app.domain.model.SwipeAction
 import com.knownassurajit.dvide_finance.app.ui.MainViewModel
@@ -196,6 +197,8 @@ class PersistenceIntegrationTest {
         source.settings.setUserName("Sam"); source.settings.setSeedHue(212); source.settings.setDynamicColor(true)
         source.settings.setDashboardVariant(DashboardVariant.GAUGE); source.settings.setFontOption(AppFont.INTER)
         source.settings.setSwipeLeft(SwipeAction.DELETE); source.settings.setPayday(31)
+        source.settings.setSplitDashboardColor(true); source.settings.setDashboardHue(180)
+        source.settings.setDashboardStyle(DashboardStyle.TINTED)
 
         val file = File(tmp.root, "backup.json")
         val counts = source.backup.exportTo(Uri.fromFile(file)).getOrThrow()
@@ -212,6 +215,8 @@ class PersistenceIntegrationTest {
         assertEquals("Sam", s.userName); assertEquals(212, s.seedHue); assertTrue(s.dynamicColor)
         assertEquals(DashboardVariant.GAUGE, s.dashboardVariant); assertEquals(AppFont.INTER, s.fontOption)
         assertEquals(SwipeAction.DELETE, s.swipeLeft); assertEquals(31, s.payday)
+        assertTrue(s.splitDashboardColor); assertEquals(180, s.dashboardHue)
+        assertEquals(DashboardStyle.TINTED, s.dashboardStyle)
         assertTrue("restored app skips onboarding", s.seeded)
     }
 
@@ -266,5 +271,33 @@ class PersistenceIntegrationTest {
     @Test fun `reading a missing file reports a failure instead of crashing`() = runBlocking {
         val parsed = env().backup.read(Uri.fromFile(File(tmp.root, "does-not-exist.json")))
         assertTrue(parsed is BackupParse.Failure)
+    }
+
+    @Test fun `editing income top-up adjusts cycle income by difference`() = runBlocking {
+        val e = env()
+        seed(e)
+        val vm = newViewModel(e)
+        pumpUntil { vm.isReady.value }
+
+        vm.addFundsToCurrentCycle(amount = 200.0, note = "Bonus")
+        pumpUntil { vm.transactions.value.any { it.kind == "income" } }
+
+        var cycle = e.cycles.getAll().first { it.id == 1L }
+        assertEquals(3200.0, cycle.income, 0.001)
+
+        val topUpTx = vm.transactions.value.first { it.kind == "income" }
+        assertEquals(200.0, topUpTx.amount, 0.001)
+
+        vm.updateTransaction(topUpTx.copy(amount = 500.0, note = "Bigger bonus"))
+        pumpUntil { vm.transactions.value.first { it.id == topUpTx.id }.amount == 500.0 }
+
+        cycle = e.cycles.getAll().first { it.id == 1L }
+        assertEquals(3500.0, cycle.income, 0.001)
+
+        vm.deleteTransaction(topUpTx.copy(amount = 500.0))
+        pumpUntil { vm.transactions.value.none { it.id == topUpTx.id } }
+
+        cycle = e.cycles.getAll().first { it.id == 1L }
+        assertEquals(3000.0, cycle.income, 0.001)
     }
 }

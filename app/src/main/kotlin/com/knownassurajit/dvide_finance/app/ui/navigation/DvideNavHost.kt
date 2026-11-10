@@ -38,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,14 +70,21 @@ import com.knownassurajit.dvide_finance.app.ui.cycle.ArchiveScreen
 import com.knownassurajit.dvide_finance.app.ui.cycle.CycleDetailScreen
 import com.knownassurajit.dvide_finance.app.ui.dashboard.DashboardScreen
 import com.knownassurajit.dvide_finance.app.ui.entry.AddTransactionSheet
+import com.knownassurajit.dvide_finance.app.ui.entry.MODE_INCOME
+import com.knownassurajit.dvide_finance.app.ui.entry.MODE_SPEND
 import com.knownassurajit.dvide_finance.app.ui.onboarding.OnboardingScreen
 import com.knownassurajit.dvide_finance.app.ui.settings.ProfileScreen
 import com.knownassurajit.dvide_finance.app.ui.settings.SettingsScreen
 import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
+import com.knownassurajit.dvide_finance.app.ui.theme.DvideExtraColors
+import com.knownassurajit.dvide_finance.app.ui.theme.LocalDashboardStyle
+import com.knownassurajit.dvide_finance.app.ui.theme.LocalDvideColors
 import com.knownassurajit.dvide_finance.app.ui.theme.M3XMotion
 import com.knownassurajit.dvide_finance.app.ui.theme.ShapeSheet
+import com.knownassurajit.dvide_finance.app.ui.theme.colorSchemeForHue
 import com.knownassurajit.dvide_finance.app.ui.theme.dvideBottomBarPadding
 import com.knownassurajit.dvide_finance.app.ui.theme.m3xPressEffect
+import com.knownassurajit.dvide_finance.app.ui.theme.monochromeColorScheme
 
 private const val ROUTE_HOME     = "home"
 private const val ROUTE_SETTINGS = "settings"
@@ -122,11 +130,13 @@ fun DvideNavHost(
     val currentRoute    = navBackStack?.destination?.route
 
     var showAddSheet by remember { mutableStateOf(false) }
+    var entrySheetInitialMode by remember { mutableStateOf(MODE_SPEND) }
     var showAddCycleSheet by remember { mutableStateOf(false) }
     var showAddFundsSheet by remember { mutableStateOf(false) }
     var showFabActionsSheet by remember { mutableStateOf(false) }
     var editingCycle by remember { mutableStateOf<ManualCycle?>(null) }
     var editingTransaction by remember { mutableStateOf<Transaction?>(null) }
+    var editingFundsTransaction by remember { mutableStateOf<Transaction?>(null) }
 
     val enterPush = M3XMotion.enterPush()
     val exitPush  = M3XMotion.exitPush()
@@ -188,6 +198,7 @@ fun DvideNavHost(
                             onClickLabel = "Add entry",
                             onLongClickLabel = "More options",
                             onClick = {
+                                entrySheetInitialMode = MODE_SPEND
                                 editingTransaction = null
                                 showAddSheet = true
                             },
@@ -227,32 +238,54 @@ fun DvideNavHost(
                     popEnterTransition  = { enterPop },
                     popExitTransition   = { exitPop },
                 ) {
-                    DashboardScreen(
-                        metrics       = metrics,
-                        variant       = settings.dashboardVariant,
-                        viewIsWeekly  = viewWeekly,
-                        onViewChange  = viewModel::setViewIsWeekly,
-                        userName      = settings.userName,
-                        highlightId   = highlightId,
-                        profilePictureUri = settings.profilePictureUri,
-                        onOpenSettings = { navigateTo(ROUTE_SETTINGS) },
-                        onOpenCycle    = {
-                            val id = metrics?.sourceCycleId
-                            if (id != null && id != 0L) openCycle(id)
-                        },
-                        onOpenProfile  = { navigateTo(ROUTE_PROFILE) },
-                        onDeleteTransaction = viewModel::deleteTransaction,
-                        onEditTransaction = { tx ->
-                            editingTransaction = tx
-                            showAddSheet = true
-                        },
-                        onAddCycle = { showAddCycleSheet = true },
-                        onAddTransaction = {
-                            editingTransaction = null
-                            showAddSheet = true
-                        },
-                        onOpenArchive = { navigateTo(ROUTE_ARCHIVE) },
+                    val dashHue = if (settings.splitDashboardColor) settings.dashboardHue else settings.seedHue
+                    val dashColorScheme = if (settings.dynamicColor) {
+                        colorSchemeForHue(dashHue, settings.darkTheme)
+                    } else {
+                        monochromeColorScheme(settings.darkTheme)
+                    }
+                    val dashExtraColors = DvideExtraColors(
+                        status           = dashColorScheme.error,
+                        statusContainer  = dashColorScheme.errorContainer,
+                        onStatusContainer = dashColorScheme.onErrorContainer,
+                        seedHue          = dashHue,
+                        dark             = settings.darkTheme,
+                        dynamicColor     = settings.dynamicColor,
                     )
+                    MaterialTheme(colorScheme = dashColorScheme) {
+                        CompositionLocalProvider(
+                            LocalDvideColors provides dashExtraColors,
+                            LocalDashboardStyle provides settings.dashboardStyle,
+                        ) {
+                            DashboardScreen(
+                                metrics       = metrics,
+                                variant       = settings.dashboardVariant,
+                                viewIsWeekly  = viewWeekly,
+                                onViewChange  = viewModel::setViewIsWeekly,
+                                userName      = settings.userName,
+                                highlightId   = highlightId,
+                                profilePictureUri = settings.profilePictureUri,
+                                onOpenSettings = { navigateTo(ROUTE_SETTINGS) },
+                                onOpenCycle    = {
+                                    val id = metrics?.sourceCycleId
+                                    if (id != null && id != 0L) openCycle(id)
+                                },
+                                onOpenProfile  = { navigateTo(ROUTE_PROFILE) },
+                                onDeleteTransaction = viewModel::deleteTransaction,
+                                onEditTransaction = { tx ->
+                                    editingTransaction = tx
+                                    showAddSheet = true
+                                },
+                                onAddCycle = { showAddCycleSheet = true },
+                                onAddTransaction = {
+                                    entrySheetInitialMode = MODE_SPEND
+                                    editingTransaction = null
+                                    showAddSheet = true
+                                },
+                                onOpenArchive = { navigateTo(ROUTE_ARCHIVE) },
+                            )
+                        }
+                    }
                 }
 
                 composable(
@@ -282,6 +315,9 @@ fun DvideNavHost(
                         onExportFormat      = { format: ExportFormat -> shareExport(format) },
                         onSwipeLeftChange   = viewModel::setSwipeLeft,
                         onSwipeRightChange  = viewModel::setSwipeRight,
+                        onSplitDashboardColorChange = viewModel::setSplitDashboardColor,
+                        onDashboardHueChange = viewModel::setDashboardHue,
+                        onDashboardStyleChange = viewModel::setDashboardStyle,
                         onExportBackup      = viewModel::exportBackup,
                         onReadBackup        = viewModel::readBackup,
                         onRestoreBackup     = viewModel::restoreBackup,
@@ -442,7 +478,9 @@ fun DvideNavHost(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text  = if (editingTransaction != null) "Edit entry" else "New entry",
+                    text  = if (editingTransaction != null) "Edit entry"
+                            else if (entrySheetInitialMode == MODE_INCOME) "Add funds to cycle"
+                            else "New entry",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -455,6 +493,7 @@ fun DvideNavHost(
             }
 
             AddTransactionSheet(
+                initialMode = entrySheetInitialMode,
                 cycleId = currentCycle?.id,
                 cycleStart = currentCycle?.startDate,
                 cycleEnd = currentCycle?.endDate,
@@ -503,6 +542,7 @@ fun DvideNavHost(
                         .clip(RoundedCornerShape(16.dp))
                         .clickable {
                             showFabActionsSheet = false
+                            entrySheetInitialMode = MODE_SPEND
                             editingTransaction = null
                             showAddSheet = true
                         },
@@ -542,7 +582,9 @@ fun DvideNavHost(
                         .clip(RoundedCornerShape(16.dp))
                         .clickable {
                             showFabActionsSheet = false
-                            showAddFundsSheet = true
+                            entrySheetInitialMode = MODE_INCOME
+                            editingTransaction = null
+                            showAddSheet = true
                         },
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surfaceContainer,
@@ -618,7 +660,10 @@ fun DvideNavHost(
 
     if (showAddFundsSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showAddFundsSheet = false },
+            onDismissRequest = {
+                showAddFundsSheet = false
+                editingFundsTransaction = null
+            },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             shape = ShapeSheet,
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -638,18 +683,30 @@ fun DvideNavHost(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "Add funds to cycle",
+                        text = if (editingFundsTransaction != null) "Edit funds" else "Add funds to cycle",
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    IconButton(onClick = { showAddFundsSheet = false }) {
+                    IconButton(onClick = {
+                        showAddFundsSheet = false
+                        editingFundsTransaction = null
+                    }) {
                         Icon(CwIcons.Close, contentDescription = "Close")
                     }
                 }
                 AddFundsSheet(
-                    onAddFunds = { amount, note ->
-                        viewModel.addFundsToCurrentCycle(amount, note)
+                    editing = editingFundsTransaction,
+                    cycleStart = currentCycle?.startDate,
+                    cycleEnd = currentCycle?.endDate,
+                    onUpdateFunds = { updatedTx ->
+                        viewModel.updateTransaction(updatedTx)
                         showAddFundsSheet = false
+                        editingFundsTransaction = null
+                    },
+                    onAddFunds = { amount, note, date ->
+                        viewModel.addFundsToCurrentCycle(amount, note, date)
+                        showAddFundsSheet = false
+                        editingFundsTransaction = null
                     },
                 )
             }

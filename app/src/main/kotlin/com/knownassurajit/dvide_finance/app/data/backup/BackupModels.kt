@@ -3,6 +3,7 @@ package com.knownassurajit.dvide_finance.app.data.backup
 import com.knownassurajit.dvide_finance.app.data.model.ManualCycle
 import com.knownassurajit.dvide_finance.app.data.model.Transaction
 import com.knownassurajit.dvide_finance.app.domain.model.AppFont
+import com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
 import com.knownassurajit.dvide_finance.app.domain.model.SwipeAction
 
@@ -27,6 +28,9 @@ data class BackupSettings(
     val swipeRight: SwipeAction? = null,
     val userName: String? = null,
     val userEmail: String? = null,
+    val splitDashboardColor: Boolean? = null,
+    val dashboardHue: Int? = null,
+    val dashboardStyle: DashboardStyle? = null,
 )
 
 data class BackupSnapshot(

@@ -39,6 +39,7 @@ import com.knownassurajit.dvide_finance.app.data.backup.BackupCounts
 import com.knownassurajit.dvide_finance.app.data.backup.BackupParse
 import com.knownassurajit.dvide_finance.app.data.repository.AppSettings
 import com.knownassurajit.dvide_finance.app.domain.model.AppFont
+import com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
 import com.knownassurajit.dvide_finance.app.domain.model.ExportFormat
 import com.knownassurajit.dvide_finance.app.domain.model.SwipeAction
@@ -87,6 +88,9 @@ fun SettingsScreen(
     onExportFormat: ((ExportFormat) -> Unit)? = null,
     onSwipeLeftChange: (SwipeAction) -> Unit = {},
     onSwipeRightChange: (SwipeAction) -> Unit = {},
+    onSplitDashboardColorChange: (Boolean) -> Unit = {},
+    onDashboardHueChange: (Int) -> Unit = {},
+    onDashboardStyleChange: (DashboardStyle) -> Unit = {},
     onExportBackup: suspend (Uri) -> Result<BackupCounts> = { Result.failure(UnsupportedOperationException()) },
     onReadBackup: suspend (Uri) -> BackupParse = { BackupParse.Failure("Restore isn't available here.") },
     onRestoreBackup: suspend (BackupParse.Success) -> Result<BackupCounts> = { Result.failure(UnsupportedOperationException()) },
@@ -190,6 +194,21 @@ fun SettingsScreen(
                     onCheckedChange = onDynamicColorChange,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                SettingsRow(
+                    label = "Font family",
+                    value = settings.fontOption.label,
+                    onClick = { showFontDialog = true },
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                ColorHueEditor(
+                    title = "Brand colour",
+                    hue = settings.seedHue,
+                    onHueChange = onSeedHueChange,
+                    enabled = settings.dynamicColor,
+                )
+            }
+
+            SettingsSection(title = "Dashboard Customization") {
                 Column(modifier = Modifier.padding(SettingsSpace.inner)) {
                     Text(
                         text = "Dashboard layout",
@@ -206,87 +225,66 @@ fun SettingsScreen(
                                 selected = settings.dashboardVariant == variant,
                                 onClick = { onVariantChange(variant) },
                                 label = { Text(variant.label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = settings.dashboardVariant == variant,
+                                    borderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    selectedBorderColor = MaterialTheme.colorScheme.primary,
+                                ),
                             )
                         }
                     }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-                SettingsRow(
-                    label = "Font family",
-                    value = settings.fontOption.label,
-                    onClick = { showFontDialog = true },
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
                 Column(modifier = Modifier.padding(SettingsSpace.inner)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                    Text(
+                        text = "Card style",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(modifier = Modifier.height(DvideDimens.item))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(DvideDimens.tight),
+                        verticalArrangement = Arrangement.spacedBy(DvideDimens.tight),
                     ) {
-                        Text(
-                            text = "Brand colour",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (settings.dynamicColor) MaterialTheme.colorScheme.onSurface
-                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        )
-                        if (!settings.dynamicColor) {
-                            Text(
-                                text = "Disabled",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        DashboardStyle.entries.forEach { style ->
+                            FilterChip(
+                                selected = settings.dashboardStyle == style,
+                                onClick = { onDashboardStyleChange(style) },
+                                label = { Text(style.label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = settings.dashboardStyle == style,
+                                    borderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    selectedBorderColor = MaterialTheme.colorScheme.primary,
+                                ),
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(SettingsSpace.rowV))
-                    HueSlider(
-                        hue = settings.seedHue,
-                        onHueChange = { onSeedHueChange(it.toInt()) },
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                SettingsSwitchRow(
+                    label = "Split dashboard colour",
+                    subLabel = "Customize dashboard theme separately from app brand color",
+                    checked = settings.splitDashboardColor,
+                    onCheckedChange = onSplitDashboardColorChange,
+                )
+                if (settings.splitDashboardColor) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                    ColorHueEditor(
+                        title = "Dashboard colour",
+                        hue = settings.dashboardHue,
+                        onHueChange = onDashboardHueChange,
                         enabled = settings.dynamicColor,
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    val currentHex = remember(settings.seedHue) { hueToPrimaryColor(settings.seedHue).toHex() }
-                    var hexInput by remember(settings.seedHue) { mutableStateOf(currentHex) }
-                    val activeColor = remember(settings.seedHue) { hueToPrimaryColor(settings.seedHue) }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(if (settings.dynamicColor) activeColor else MaterialTheme.colorScheme.surfaceContainerHighest)
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
-                        )
-                        OutlinedTextField(
-                            value = hexInput,
-                            onValueChange = { input ->
-                                val clean = input.trim().uppercase()
-                                if (clean.length <= 7) {
-                                    hexInput = clean
-                                    val parsedHue = hexToHue(clean)
-                                    if (parsedHue != null) {
-                                        onSeedHueChange(parsedHue)
-                                    }
-                                }
-                            },
-                            enabled = settings.dynamicColor,
-                            placeholder = { Text("#RRGGBB") },
-                            label = { Text("Color hex code") },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                disabledBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                                disabledContainerColor = Color.Transparent,
-                                disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            ),
-                        )
-                    }
                 }
             }
 
@@ -957,5 +955,138 @@ fun FontSelectDialog(
             TextButton(onClick = onDismiss) { Text("Close") }
         }
     )
+}
+
+private val PRESET_HUES = listOf(
+    300 to "Violet",
+    212 to "Blue",
+    180 to "Cyan",
+    142 to "Emerald",
+    42 to "Amber",
+    14 to "Coral",
+    340 to "Pink",
+)
+
+@Composable
+private fun ColorHueEditor(
+    title: String,
+    hue: Int,
+    onHueChange: (Int) -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.padding(SettingsSpace.inner)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface
+                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            )
+            if (!enabled) {
+                Text(
+                    text = "Disabled",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(SettingsSpace.rowV))
+        HueSlider(
+            hue = hue,
+            onHueChange = onHueChange,
+            enabled = enabled,
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Preset Quick-Pick Chips
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            PRESET_HUES.forEach { (presetHue, name) ->
+                val chipColor = remember(presetHue) { hueToPrimaryColor(presetHue) }
+                val isSelected = enabled && kotlin.math.abs(hue - presetHue) <= 5
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onHueChange(presetHue) },
+                    enabled = enabled,
+                    label = {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    },
+                    leadingIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(chipColor)
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = chipColor.copy(alpha = 0.18f),
+                        selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = enabled,
+                        selected = isSelected,
+                        borderColor = MaterialTheme.colorScheme.outlineVariant,
+                        selectedBorderColor = chipColor,
+                    ),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        val currentHex = remember(hue) { hueToPrimaryColor(hue).toHex() }
+        var hexInput by remember(hue) { mutableStateOf(currentHex) }
+        val activeColor = remember(hue) { hueToPrimaryColor(hue) }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(if (enabled) activeColor else MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+            )
+            OutlinedTextField(
+                value = hexInput,
+                onValueChange = { input ->
+                    val clean = input.trim().uppercase()
+                    if (clean.length <= 7) {
+                        hexInput = clean
+                        val parsedHue = hexToHue(clean)
+                        if (parsedHue != null) {
+                            onHueChange(parsedHue)
+                        }
+                    }
+                },
+                enabled = enabled,
+                placeholder = { Text("#RRGGBB") },
+                label = { Text("Color hex code") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    disabledContainerColor = Color.Transparent,
+                    disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                ),
+            )
+        }
+    }
 }
 

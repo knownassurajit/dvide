@@ -7,6 +7,7 @@ import com.knownassurajit.dvide_finance.app.data.backup.BackupSnapshot
 import com.knownassurajit.dvide_finance.app.data.model.ManualCycle
 import com.knownassurajit.dvide_finance.app.data.model.Transaction
 import com.knownassurajit.dvide_finance.app.domain.model.AppFont
+import com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle
 import com.knownassurajit.dvide_finance.app.domain.model.DashboardVariant
 import com.knownassurajit.dvide_finance.app.domain.model.EntryLimits
 import com.knownassurajit.dvide_finance.app.domain.model.SwipeAction
@@ -44,6 +45,7 @@ class BackupCodecTest {
         fontOption = AppFont.INTER, currencyCode = "CAD", regionCode = "CA", weekStartDay = 1,
         numberFormat = "DOT_DECIMAL", showDecimals = false, payday = 31,
         swipeLeft = SwipeAction.DELETE, swipeRight = SwipeAction.NONE, userName = "Sam", userEmail = "sam@example.com",
+        splitDashboardColor = true, dashboardHue = 180, dashboardStyle = DashboardStyle.TINTED,
     )
 
     private fun snapshot() = BackupSnapshot(listOf(cycle2, cycle1), txs.reversed(), settings)

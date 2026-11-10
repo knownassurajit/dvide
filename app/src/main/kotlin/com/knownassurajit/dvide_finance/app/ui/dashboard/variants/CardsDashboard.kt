@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle
+import com.knownassurajit.dvide_finance.app.ui.theme.dashboardStyle
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,6 +65,7 @@ fun CardsDashboard(
         topStart = cornerTL, topEnd = cornerTL,
         bottomEnd = cornerTL, bottomStart = 14.dp,
     )
+    val style = MaterialTheme.dashboardStyle
 
     Column(modifier = modifier) {
         Surface(
@@ -77,7 +80,10 @@ fun CardsDashboard(
                     onLongClick = { onViewChange(!viewIsWeekly) },
                 ),
             shape = cardShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
+            color = if (style == DashboardStyle.MINIMAL) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primaryContainer,
+            border = if (style == DashboardStyle.TINTED) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
+                     else if (style == DashboardStyle.MINIMAL) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                     else null,
         ) {
             Column(
                 modifier = Modifier
@@ -159,7 +165,7 @@ fun CardsDashboard(
             BucketCard(
                 label = "Income",
                 value = formatter.format(metrics.income),
-                dotColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                dotColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f),
             )
             BucketCard(
@@ -196,10 +202,16 @@ private fun BucketCard(
     dotColor: Color,
     modifier: Modifier = Modifier,
 ) {
+    val style = MaterialTheme.dashboardStyle
     Surface(
         modifier = modifier,
         shape = ShapeBucketCard,
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = if (style == DashboardStyle.TINTED) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f)
+                else if (style == DashboardStyle.MINIMAL) MaterialTheme.colorScheme.surface
+                else MaterialTheme.colorScheme.surfaceContainer,
+        border = if (style == DashboardStyle.TINTED) androidx.compose.foundation.BorderStroke(0.8.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                 else if (style == DashboardStyle.MINIMAL) androidx.compose.foundation.BorderStroke(0.8.dp, MaterialTheme.colorScheme.outlineVariant)
+                 else null,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = DvideDimens.item, vertical = DvideDimens.item),

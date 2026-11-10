@@ -139,7 +139,11 @@ fun TransactionTimeline(
                     val isNew      = tx.id == highlightId
                     val isExpanded = tx.id == expandedTxId
                     val catKind    = Category.kindOf(tx.category, tx.kind)
-                    val catColor   = tx.color?.let { Color(it) } ?: MaterialTheme.dvideColors.categoryColor(tx.category)
+                    val catColor   = if (!MaterialTheme.dvideColors.dynamicColor) {
+                        MaterialTheme.dvideColors.categoryColor(tx.category)
+                    } else {
+                        tx.color?.let { Color(it) } ?: MaterialTheme.dvideColors.categoryColor(tx.category)
+                    }
 
                     // Row callbacks read the *latest* entry/config: the swipe state outlives recompositions, so a
                     // plain capture would act on whatever entry occupied this slot when it was first created.
@@ -154,7 +158,7 @@ fun TransactionTimeline(
                         value = value,
                         config = latestConfig,
                         rtl = rtl,
-                        editable = latestEdit != null && latestTx.kind != "income",
+                        editable = latestEdit != null,
                         deletable = latestDelete != null,
                     )
 
@@ -201,7 +205,7 @@ fun TransactionTimeline(
                                     .semantics {
                                         // Swipe gestures are not available to screen-reader users; expose the same actions.
                                         customActions = buildList {
-                                            if (onEditTransaction != null && tx.kind != "income") {
+                                            if (onEditTransaction != null) {
                                                 add(CustomAccessibilityAction("Edit entry") { onEditTransaction(tx); true })
                                             }
                                             if (onDeleteTransaction != null) {
@@ -308,7 +312,7 @@ fun TransactionTimeline(
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                if (onEditTransaction != null && tx.kind != "income") {
+                                                if (onEditTransaction != null) {
                                                     TextButton(
                                                         onClick = {
                                                             onEditTransaction(tx)
@@ -365,7 +369,7 @@ fun TransactionTimeline(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    if (onEditTransaction != null && tx.kind != "income") {
+                    if (onEditTransaction != null) {
                         Surface(
                             onClick = {
                                 showActionSheet = null

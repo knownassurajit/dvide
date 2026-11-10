@@ -118,6 +118,10 @@ fun DashHeader(
                     onClick = { onViewChange(index == 1) },
                     shape = SegmentedButtonDefaults.itemShape(index, options.size),
                     label = { Text(label) },
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
                 )
             }
         }

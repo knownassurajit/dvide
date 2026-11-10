@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -23,6 +24,8 @@ import com.knownassurajit.dvide_finance.app.ui.components.RingGauge
 import com.knownassurajit.dvide_finance.app.ui.components.TransactionTimeline
 import com.knownassurajit.dvide_finance.app.ui.theme.DvideDimens
 import com.knownassurajit.dvide_finance.app.ui.theme.LocalCurrencyFormatter
+import com.knownassurajit.dvide_finance.app.ui.theme.dashboardCardColors
+import com.knownassurajit.dvide_finance.app.ui.theme.dashboardStyle
 import com.knownassurajit.dvide_finance.app.ui.theme.dvideColors
 import com.knownassurajit.dvide_finance.app.ui.theme.m3xPressEffect
 
@@ -45,6 +48,8 @@ fun FocusDashboard(
 
     Column(modifier = modifier.fillMaxWidth()) {
         // Hero Focus Card with Ring Gauge
+        val style = MaterialTheme.dashboardStyle
+        val cardColors = dashboardCardColors(style)
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -58,7 +63,8 @@ fun FocusDashboard(
                     onLongClick = { onViewChange(!viewIsWeekly) },
                 ),
             shape = RoundedCornerShape(32.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = cardColors.containerColor,
+            border = if (cardColors.borderColor != Color.Transparent) androidx.compose.foundation.BorderStroke(1.dp, cardColors.borderColor) else null,
         ) {
             Column(
                     modifier = Modifier
@@ -122,7 +128,7 @@ fun FocusDashboard(
                         value = metrics.balanceFraction,
                         size = 210.dp,
                         strokeWidth = 18.dp,
-                        fillColor = if (metrics.tight) cc.status else MaterialTheme.colorScheme.primary,
+                        fillColor = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         sharp = metrics.tight,
                     ) {
@@ -160,7 +166,8 @@ fun FocusDashboard(
                         Surface(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            color = if (style == com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle.TINTED) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainer,
+                            border = if (style == com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle.TINTED) androidx.compose.foundation.BorderStroke(0.8.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)) else null,
                         ) {
                             Column(
                                 modifier = Modifier.padding(14.dp),
@@ -183,7 +190,8 @@ fun FocusDashboard(
                         Surface(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            color = if (style == com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle.TINTED) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainer,
+                            border = if (style == com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle.TINTED) androidx.compose.foundation.BorderStroke(0.8.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)) else null,
                         ) {
                             Column(
                                 modifier = Modifier.padding(14.dp),

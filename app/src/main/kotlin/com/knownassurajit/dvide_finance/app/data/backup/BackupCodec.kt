@@ -98,6 +98,9 @@ object BackupCodec {
         s.swipeRight?.let { o.put("swipeRight", it.key) }
         s.userName?.let { o.put("userName", it) }
         s.userEmail?.let { o.put("userEmail", it) }
+        s.splitDashboardColor?.let { o.put("splitDashboardColor", it) }
+        s.dashboardHue?.let { o.put("dashboardHue", it) }
+        s.dashboardStyle?.let { o.put("dashboardStyle", it.key) }
         return o
     }
 
@@ -249,6 +252,9 @@ object BackupCodec {
             swipeRight = keyed("swipeRight") { k -> SwipeAction.entries.firstOrNull { it.key == k } },
             userName = text("userName", EntryLimits.PROFILE_NAME_MAX),
             userEmail = text("userEmail", EntryLimits.PROFILE_EMAIL_MAX),
+            splitDashboardColor = bool("splitDashboardColor"),
+            dashboardHue = int("dashboardHue", 0..359),
+            dashboardStyle = keyed("dashboardStyle") { k -> com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle.entries.firstOrNull { it.key == k } },
         )
     }
 

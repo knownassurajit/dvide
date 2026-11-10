@@ -34,6 +34,7 @@ import com.knownassurajit.dvide_finance.app.domain.model.EntryLimits
 import com.knownassurajit.dvide_finance.app.domain.model.SwipeAction
 import com.knownassurajit.dvide_finance.app.domain.model.SwipeConfig
 import com.knownassurajit.dvide_finance.app.ui.components.TransactionTimeline
+import com.knownassurajit.dvide_finance.app.ui.cycle.AddFundsSheet
 import com.knownassurajit.dvide_finance.app.ui.entry.AddTransactionSheet
 import com.knownassurajit.dvide_finance.app.ui.entry.NewTransaction
 import com.knownassurajit.dvide_finance.app.ui.settings.ProfileScreen
@@ -143,11 +144,11 @@ class InteractionUiTest {
         rule.onAllNodesWithText("Delete entry").assertCountEquals(0)
     }
 
-    @Test fun `top up entries cannot be edited by swipe`() {
+    @Test fun `top up entries can be edited by swipe`() {
         showTimeline()
         rule.onNodeWithText("Bonus top-up").performTouchInput { swipeLeft() }
         rule.waitForIdle()
-        assertNull(edited)
+        assertEquals(topUp, edited)
     }
 
     // ───────────── existing interactions are preserved ─────────────
@@ -179,10 +180,17 @@ class InteractionUiTest {
         rule.onNodeWithText("Delete entry").assertIsDisplayed()
     }
 
-    @Test fun `top up entries expose only the delete custom action`() {
+    @Test fun `top up entries expose edit and delete custom actions`() {
         showTimeline()
         val actions = rule.onNodeWithText("Bonus top-up").fetchSemanticsNode().config[SemanticsActions.CustomActions]
-        assertEquals(listOf("Delete entry"), actions.map { it.label })
+        assertEquals(setOf("Edit entry", "Delete entry"), actions.map { it.label }.toSet())
+    }
+
+    @Test fun `swiping or clicking edit on top up entry calls onEditTransaction`() {
+        showTimeline()
+        rule.onNodeWithText("Bonus top-up").performTouchInput { swipeLeft() }
+        rule.waitForIdle()
+        assertEquals(topUp, edited)
     }
 
     // ───────────── entry editor ─────────────
@@ -307,5 +315,33 @@ class InteractionUiTest {
         showSettings()
         rule.onNodeWithText("Back up to file").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("Restore from file").performScrollTo().assertIsDisplayed()
+    }
+
+    // ───────────── add funds sheet ─────────────
+
+    @Test fun `add funds sheet pre-fills data when editing and saves changes`() {
+        var updatedFunds: Transaction? = null
+        rule.setContent {
+            DvideTheme {
+                Box(Modifier.fillMaxSize()) {
+                    AddFundsSheet(
+                        onAddFunds = { _, _ -> },
+                        editing = topUp,
+                        onUpdateFunds = { updatedFunds = it },
+                    )
+                }
+            }
+        }
+
+        rule.onNodeWithText("Save changes").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Bonus top-up").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Save changes").performScrollTo().performClick()
+        rule.waitForIdle()
+
+        val result = updatedFunds
+        assertNotNull(result)
+        assertEquals(100.0, result!!.amount, 0.001)
+        assertEquals("Bonus top-up", result.note)
+        assertEquals("income", result.kind)
     }
 }

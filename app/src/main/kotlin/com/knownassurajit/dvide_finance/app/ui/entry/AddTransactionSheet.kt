@@ -59,8 +59,9 @@ data class NewTransaction(
     val cycleId: Long? = null,
 )
 
-private const val MODE_SPEND = "spend"
-private const val MODE_ASIDE = "aside"
+const val MODE_SPEND = "spend"
+const val MODE_ASIDE = "aside"
+const val MODE_INCOME = "income"
 
 private val ENTRY_NOTES = mapOf(
     "essentials" to listOf("Groceries", "Rent", "Transport", "Utilities"),
@@ -68,6 +69,9 @@ private val ENTRY_NOTES = mapOf(
     "savings"    to listOf("Emergency fund", "Holiday pot", "Rainy day"),
     "investment" to listOf("Index fund", "Pension top-up", "Shares"),
     "security"   to listOf("Insurance", "Deposit", "Warranty"),
+    "income"     to listOf("Top-up balance", "Salary top-up", "Bonus", "Side gig"),
+    "bonus"      to listOf("Performance bonus", "Holiday bonus", "Incentive"),
+    "freelance"  to listOf("Client payment", "Design work", "Consulting"),
 )
 
 val ENTRY_COLOR_SWATCHES = listOf(
@@ -87,6 +91,7 @@ val ENTRY_COLOR_SWATCHES = listOf(
 fun AddTransactionSheet(
     onAdd: (NewTransaction) -> Unit,
     modifier: Modifier = Modifier,
+    initialMode: String = MODE_SPEND,
     editing: Transaction? = null,
     onUpdate: ((Transaction) -> Unit)? = null,
     cycleId: Long? = null,
@@ -111,11 +116,25 @@ fun AddTransactionSheet(
             } else "0"
         )
     }
-    var mode by remember(editing) {
-        mutableStateOf(if (editing?.kind == "aside") MODE_ASIDE else MODE_SPEND)
+
+    var mode by remember(editing, initialMode) {
+        mutableStateOf(
+            when (editing?.kind) {
+                "aside"  -> MODE_ASIDE
+                "income" -> MODE_INCOME
+                "expense"-> MODE_SPEND
+                else     -> initialMode
+            }
+        )
     }
-    var category by remember(editing) {
-        mutableStateOf(editing?.category ?: "essentials")
+    var category by remember(editing, initialMode) {
+        mutableStateOf(
+            editing?.category ?: when (initialMode) {
+                MODE_INCOME -> "income"
+                MODE_ASIDE  -> "savings"
+                else        -> "essentials"
+            }
+        )
     }
     var customCat by remember(editing) {
         mutableStateOf(editing?.category?.takeIf { it !in Category.ALL_KEYS } ?: "")
@@ -134,14 +153,23 @@ fun AddTransactionSheet(
 
     val spendCats = Category.EXPENSE_KEYS
     val asideCats = Category.ASIDE_KEYS
-    val cats      = if (mode == MODE_SPEND) spendCats else asideCats
+    val incomeCats = Category.INCOME_KEYS
+    val cats      = when (mode) {
+        MODE_SPEND  -> spendCats
+        MODE_ASIDE  -> asideCats
+        else        -> incomeCats
+    }
 
     val value = amount.toDoubleOrNull() ?: 0.0
     val valid = value > 0
 
     fun switchMode(m: String) {
         mode     = m
-        category = if (m == MODE_SPEND) "essentials" else "savings"
+        category = when (m) {
+            MODE_SPEND  -> "essentials"
+            MODE_ASIDE  -> "savings"
+            else        -> "income"
+        }
         customCat = ""
     }
 
@@ -169,7 +197,11 @@ fun AddTransactionSheet(
         val finalNote = note.trim().ifEmpty {
             ENTRY_NOTES[activeCat]?.firstOrNull() ?: activeCat.replaceFirstChar { it.uppercase() }
         }
-        val kind = if (mode == MODE_ASIDE) "aside" else "expense"
+        val kind = when (mode) {
+            MODE_ASIDE  -> "aside"
+            MODE_INCOME -> "income"
+            else        -> "expense"
+        }
         if (editing != null && onUpdate != null) {
             onUpdate(
                 editing.copy(
@@ -204,17 +236,22 @@ fun AddTransactionSheet(
             .padding(horizontal = DvideDimens.screen)
             .padding(bottom = DvideDimens.section),
     ) {
-        // Mode toggle: Spend vs Set aside
+        // Mode toggle: Spend vs Set aside vs Income
+        val modeOptions = listOf(
+            MODE_SPEND to "Spend",
+            MODE_ASIDE to "Set aside",
+            MODE_INCOME to "Income",
+        )
         SingleChoiceSegmentedButtonRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = DvideDimens.item),
         ) {
-            listOf(MODE_SPEND to "Spend", MODE_ASIDE to "Set aside").forEachIndexed { index, (m, label) ->
+            modeOptions.forEachIndexed { index, (m, label) ->
                 SegmentedButton(
                     selected = mode == m,
                     onClick = { switchMode(m) },
-                    shape = SegmentedButtonDefaults.itemShape(index, 2),
+                    shape = SegmentedButtonDefaults.itemShape(index, modeOptions.size),
                     label = { Text(label) },
                 )
             }

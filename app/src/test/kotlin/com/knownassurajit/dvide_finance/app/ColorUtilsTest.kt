@@ -71,4 +71,50 @@ class ColorUtilsTest {
         assertEquals(240f, argbToHsl(0xFF0000FF.toInt()).hue, 0.5f)
         assertEquals(0f, argbToHsl(0xFF808080.toInt()).saturation, 0f)
     }
+
+    @Test
+    fun `monochrome color scheme has zero chromatic color across light and dark modes`() {
+        listOf(true, false).forEach { isDark ->
+            val scheme = com.knownassurajit.dvide_finance.app.ui.theme.monochromeColorScheme(isDark)
+            val colors = listOf(
+                scheme.primary, scheme.onPrimary, scheme.primaryContainer, scheme.onPrimaryContainer,
+                scheme.secondary, scheme.onSecondary, scheme.secondaryContainer, scheme.onSecondaryContainer,
+                scheme.tertiary, scheme.onTertiary, scheme.tertiaryContainer, scheme.onTertiaryContainer,
+                scheme.background, scheme.onBackground, scheme.surface, scheme.onSurface,
+                scheme.surfaceVariant, scheme.onSurfaceVariant, scheme.outline, scheme.outlineVariant,
+                scheme.error, scheme.onError, scheme.errorContainer, scheme.onErrorContainer,
+            )
+            for (color in colors) {
+                assertEquals("Color $color should have red == green in dark=$isDark", color.red, color.green, 0.01f)
+                assertEquals("Color $color should have green == blue in dark=$isDark", color.green, color.blue, 0.01f)
+            }
+        }
+    }
+
+    @Test
+    fun `monochrome category colors have zero chromatic color`() {
+        val categories = listOf("savings", "investment", "security", "essentials", "lifestyle", "income", "custom_cat")
+        for (cat in categories) {
+            val darkColor = com.knownassurajit.dvide_finance.app.data.model.Category.monochromeDark(cat)
+            assertEquals("Category $cat dark red == green", darkColor.red, darkColor.green, 0.001f)
+            assertEquals("Category $cat dark green == blue", darkColor.green, darkColor.blue, 0.001f)
+
+            val lightColor = com.knownassurajit.dvide_finance.app.data.model.Category.monochromeLight(cat)
+            assertEquals("Category $cat light red == green", lightColor.red, lightColor.green, 0.001f)
+            assertEquals("Category $cat light green == blue", lightColor.green, lightColor.blue, 0.001f)
+        }
+    }
+
+    @Test
+    fun `color scheme surfaces harmonize with selected hue instead of fixed purple`() {
+        val blueHue = 212
+        val scheme = com.knownassurajit.dvide_finance.app.ui.theme.colorSchemeForHue(blueHue, dark = true)
+        val sc = scheme.surfaceContainer
+        val argb = (0xFF shl 24) or
+            (((sc.red * 255f) + 0.5f).toInt() shl 16) or
+            (((sc.green * 255f) + 0.5f).toInt() shl 8) or
+            (((sc.blue * 255f) + 0.5f).toInt())
+        val hsl = argbToHsl(argb)
+        assertEquals(blueHue.toFloat(), hsl.hue, 2f)
+    }
 }

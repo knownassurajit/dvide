@@ -34,8 +34,6 @@ fun HueSlider(
             .then(if (!enabled) Modifier.clip(RoundedCornerShape(999.dp)) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        val alpha = if (enabled) 1f else 0.35f
-
         // Spectrum track
         Canvas(
             modifier = Modifier
@@ -63,13 +61,20 @@ fun HueSlider(
                 ),
         ) {
             trackWidth = size.width
-            val stops = (0..12).map { i ->
-                (i / 12f) to Category.oklchToColor(0.65f, 0.15f, (i * 30)).copy(alpha = alpha)
-            }.toTypedArray()
-            drawRect(
-                brush = Brush.horizontalGradient(colorStops = stops),
-                size  = Size(size.width, size.height),
-            )
+            if (enabled) {
+                val stops = (0..12).map { i ->
+                    (i / 12f) to Category.oklchToColor(0.65f, 0.15f, (i * 30))
+                }.toTypedArray()
+                drawRect(
+                    brush = Brush.horizontalGradient(colorStops = stops),
+                    size  = Size(size.width, size.height),
+                )
+            } else {
+                drawRect(
+                    color = Color.Gray.copy(alpha = 0.25f),
+                    size  = Size(size.width, size.height),
+                )
+            }
         }
 
         // Thumb

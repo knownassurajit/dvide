@@ -22,12 +22,21 @@ data class DvideExtraColors(
     val onStatusContainer: Color,
     val seedHue: Int,
     val dark: Boolean,
+    val dynamicColor: Boolean = false,
 ) {
     fun categoryColor(cat: String): Color =
-        if (dark) Category.colorDark(cat, seedHue) else Category.colorLight(cat, seedHue)
+        if (!dynamicColor) {
+            if (dark) Category.monochromeDark(cat) else Category.monochromeLight(cat)
+        } else {
+            if (dark) Category.colorDark(cat, seedHue) else Category.colorLight(cat, seedHue)
+        }
 
     fun categorySoft(cat: String): Color =
-        if (dark) Category.softDark(cat, seedHue) else Category.softLight(cat, seedHue)
+        if (!dynamicColor) {
+            if (dark) Category.monochromeSoftDark(cat) else Category.monochromeSoftLight(cat)
+        } else {
+            if (dark) Category.softDark(cat, seedHue) else Category.softLight(cat, seedHue)
+        }
 }
 
 val LocalDvideColors = staticCompositionLocalOf<DvideExtraColors> {
@@ -61,6 +70,37 @@ val LocalCurrencyFormatter = staticCompositionLocalOf<CurrencyFormatter> {
 /** User-configured swipe mapping for ledger rows (provided from the persisted settings). */
 val LocalSwipeConfig = staticCompositionLocalOf { SwipeConfig.DEFAULT }
 
+/** User-configured dashboard card visual style. */
+val LocalDashboardStyle = staticCompositionLocalOf { com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle.DEFAULT }
+
+val MaterialTheme.dashboardStyle: com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle
+    @Composable @ReadOnlyComposable
+    get() = LocalDashboardStyle.current
+
+data class DashboardCardColors(
+    val containerColor: Color,
+    val borderColor: Color,
+)
+
+@Composable
+@ReadOnlyComposable
+fun dashboardCardColors(style: com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle = MaterialTheme.dashboardStyle): DashboardCardColors {
+    return when (style) {
+        com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle.TINTED -> DashboardCardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+            borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.30f),
+        )
+        com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle.MINIMAL -> DashboardCardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            borderColor = MaterialTheme.colorScheme.outlineVariant,
+        )
+        com.knownassurajit.dvide_finance.app.domain.model.DashboardStyle.CONTAINER -> DashboardCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            borderColor = Color.Transparent,
+        )
+    }
+}
+
 @Composable
 fun DvideTheme(
     seedHue: Int   = 300,
@@ -74,22 +114,26 @@ fun DvideTheme(
     fontOption: AppFont = AppFont.GOOGLE_SANS,
     content: @Composable () -> Unit,
 ) {
-    val activeHue = if (dynamicColor) seedHue else 300
-    val colorScheme = colorSchemeForHue(activeHue, darkTheme)
+    val colorScheme = if (dynamicColor) {
+        colorSchemeForHue(seedHue, darkTheme)
+    } else {
+        monochromeColorScheme(darkTheme)
+    }
 
     val extraColors = DvideExtraColors(
         status           = colorScheme.error,
         statusContainer  = colorScheme.errorContainer,
         onStatusContainer = colorScheme.onErrorContainer,
-        seedHue          = activeHue,
+        seedHue          = seedHue,
         dark             = darkTheme,
+        dynamicColor     = dynamicColor,
     )
 
     val formatter = CurrencyFormatter(currencyCode, regionCode, weekStartDay, numberFormat, showDecimals)
 
     CompositionLocalProvider(
         LocalDvideColors provides extraColors,
-        LocalCurrencyFormatter provides formatter
+        LocalCurrencyFormatter provides formatter,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
