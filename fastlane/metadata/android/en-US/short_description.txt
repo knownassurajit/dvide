@@ -1,0 +1,1 @@
+A salary-cycle budget tracker for daily safe-to-spend planning.
